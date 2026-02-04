@@ -40,9 +40,9 @@ const Header = () => {
           <Link to="/nosotros" className={isActive('/nosotros')}>
             <Users className="w-4 h-4" /> SOBRE NOSOTROS
           </Link>
-          <a href="#contact" className="hover:text-[#000080] transition-colors py-2 border-b-2 border-transparent hover:border-[#000080] flex items-center gap-2">
+          <Link to="/contacto" className={isActive('/contacto')}>
             <Mail className="w-4 h-4" /> CONTACTOS
-          </a>
+          </Link>
         </nav>
 
         {/* Right Icons */}
@@ -103,7 +103,13 @@ const Header = () => {
             >
               <Users className="w-4 h-4" /> SOBRE NOSOTROS
             </Link>
-            <a href="#" className="hover:text-primary py-2 flex items-center gap-2"><Mail className="w-4 h-4" /> CONTACTOS</a>
+            <Link 
+              to="/contacto" 
+              className={`py-2 flex items-center gap-2 ${location.pathname === '/contacto' ? 'text-yellow-500' : 'hover:text-primary'}`}
+              onClick={() => setIsOpen(false)}
+            >
+              <Mail className="w-4 h-4" /> CONTACTOS
+            </Link>
             <div className="flex items-center gap-2 py-2 border-t border-gray-700 w-full justify-center mt-2 pt-4">
               <Phone className="w-4 h-4" />
               <span>+57 3017636478</span>

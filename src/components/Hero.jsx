@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import SearchBox from './SearchBox';
 
 const videos = [
-  { src: '/video1.mp4', duration: 12000 },
-  { src: '/video2.mp4', duration: 19000 }
+  { src: 'https://videos.pexels.com/video-files/3209828/3209828-uhd_2560_1440_25fps.mp4', duration: 12000 },
+  { src: 'https://videos.pexels.com/video-files/4133023/4133023-uhd_3840_2160_30fps.mp4', duration: 19000 }
 ];
 
 const Hero = () => {
