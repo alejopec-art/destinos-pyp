@@ -11,7 +11,7 @@ const packagesData = [
     title: "Punta Cana Todo Incluido",
     location: "República Dominicana",
     duration: "5 Días / 4 Noches",
-    price: 1200,
+    price: 4800000,
     rating: 4.8,
     image: "https://images.unsplash.com/photo-1540541338287-41700207dee6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     tags: ["Playa", "Todo Incluido", "Familia"]
@@ -21,7 +21,7 @@ const packagesData = [
     title: "Cancún y Riviera Maya",
     location: "México",
     duration: "6 Días / 5 Noches",
-    price: 1450,
+    price: 5800000,
     rating: 4.9,
     image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     tags: ["Playa", "Aventura", "Parejas"]
@@ -31,7 +31,7 @@ const packagesData = [
     title: "Tour Eje Cafetero",
     location: "Colombia",
     duration: "4 Días / 3 Noches",
-    price: 450,
+    price: 1800000,
     rating: 4.7,
     image: "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=800&q=80",
     tags: ["Naturaleza", "Cultura", "Café"]
@@ -41,7 +41,7 @@ const packagesData = [
     title: "Escapada a Cartagena",
     location: "Colombia",
     duration: "4 Días / 3 Noches",
-    price: 550,
+    price: 2200000,
     rating: 4.8,
     image: "https://images.unsplash.com/photo-1583531352515-8884af319dc1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     tags: ["Historia", "Playa", "Romántico"]
@@ -51,7 +51,7 @@ const packagesData = [
     title: "Aventura en Amazonas",
     location: "Colombia",
     duration: "5 Días / 4 Noches",
-    price: 700,
+    price: 2800000,
     rating: 4.9,
     image: "https://images.unsplash.com/photo-1587595431973-160d0d94add1?auto=format&fit=crop&w=800&q=80",
     tags: ["Ecoturismo", "Selva", "Exótico"]
@@ -61,7 +61,7 @@ const packagesData = [
     title: "San Andrés Islas",
     location: "Colombia",
     duration: "5 Días / 4 Noches",
-    price: 600,
+    price: 2400000,
     rating: 4.6,
     image: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     tags: ["Playa", "Buceo", "Relax"]
@@ -479,8 +479,8 @@ const PackagesPage = () => {
                   <div className="mt-auto flex items-end justify-between gap-4 pt-6 border-t border-gray-50">
                     <div>
                       <p className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wider">Desde</p>
-                      <p className="text-3xl font-bold text-[#000080]">
-                        ${pkg.price}
+                      <p className="text-2xl font-bold text-[#000080]">
+                        $ {pkg.price.toLocaleString('es-CO')} COP
                       </p>
                     </div>
                     <button className="bg-gradient-to-r from-[#84cc16] to-[#65a30d] text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all flex items-center gap-2 text-sm uppercase tracking-wide">

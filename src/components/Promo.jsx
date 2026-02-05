@@ -106,7 +106,7 @@ const Promo = () => {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 font-bold uppercase">Desde</p>
-                            <p className="text-xl font-black text-[#000080]">$1,299</p>
+                            <p className="text-xl font-black text-[#000080]">$ 4.500.000 COP</p>
                         </div>
                     </div>
                 </div>

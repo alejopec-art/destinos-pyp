@@ -166,44 +166,44 @@ const ContactPage = () => {
               className="relative"
             >
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-[2.5rem] blur opacity-30"></div>
-              <div className="relative bg-white p-10 md:p-12 rounded-[2rem] shadow-2xl border border-gray-100">
-                <h3 className="text-3xl font-bold text-[#000080] mb-2">Envíanos un mensaje</h3>
-                <p className="text-gray-500 mb-8">Responderemos en menos de 2 horas.</p>
+              <div className="relative bg-[#000080] p-10 md:p-12 rounded-[2rem] shadow-2xl border border-blue-800/50">
+                <h3 className="text-3xl font-bold text-white mb-2">Envíanos un mensaje</h3>
+                <p className="text-blue-200 mb-8">Responderemos en menos de 2 horas.</p>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Nombre Completo</label>
+                      <label className="block text-sm font-bold text-white mb-2">Nombre Completo</label>
                       <input 
                         type="text" 
                         required
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                        className="w-full bg-white border border-blue-200/20 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400"
                         placeholder="Juan Pérez"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Teléfono</label>
+                      <label className="block text-sm font-bold text-white mb-2">Teléfono</label>
                       <input 
                         type="tel" 
                         required
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                        className="w-full bg-white border border-blue-200/20 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400"
                         placeholder="+57 300..."
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Correo Electrónico</label>
+                    <label className="block text-sm font-bold text-white mb-2">Correo Electrónico</label>
                     <input 
                       type="email" 
                       required
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
+                      className="w-full bg-white border border-blue-200/20 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all placeholder-gray-400"
                       placeholder="juan@empresa.com"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Asunto</label>
+                    <label className="block text-sm font-bold text-white mb-2">Asunto</label>
                     <div className="relative">
                       <select className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all appearance-none cursor-pointer">
                         <option>Cotización de Viaje</option>
@@ -217,7 +217,7 @@ const ContactPage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Mensaje</label>
+                    <label className="block text-sm font-bold text-white mb-2">Mensaje</label>
                     <textarea 
                       required
                       rows="4"
@@ -232,7 +232,7 @@ const ContactPage = () => {
                     className={`w-full font-bold text-lg py-4 rounded-xl shadow-lg transform transition-all flex items-center justify-center gap-2
                       ${formStatus === 'sent' 
                         ? 'bg-green-500 text-white shadow-green-500/30' 
-                        : 'bg-[#000080] hover:bg-blue-800 text-white shadow-blue-900/40 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(0,0,128,0.4)]'
+                        : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-900/40 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(59,130,246,0.4)]'
                       }
                     `}
                   >

@@ -52,7 +52,9 @@ const Header = () => {
             <span className="font-semibold">+57 3017636478</span>
           </div>
           <Search className="w-5 h-5 cursor-pointer hover:text-[#000080] transition-colors" />
-          <User className="w-5 h-5 cursor-pointer hover:text-[#000080] transition-colors" />
+          <Link to="/intranet/login">
+            <User className="w-5 h-5 cursor-pointer hover:text-[#000080] transition-colors" />
+          </Link>
         </div>
 
         {/* Mobile Menu Button */}
