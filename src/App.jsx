@@ -15,26 +15,30 @@ import SalesPage from './pages/intranet/SalesPage';
 import FinancePage from './pages/intranet/FinancePage';
 import LogisticsPage from './pages/intranet/LogisticsPage';
 import SettingsPage from './pages/intranet/SettingsPage';
+import WhatsAppWidget from './components/WhatsAppWidget';
 
 function App() {
   return (
     <Router>
+      <WhatsAppWidget />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/paquetes" element={<PackagesPage />} />
         <Route path="/blog" element={<HotelBlog />} />
-        <Route path="/eventos" element={<EventsPage />} />
+        <Route path="/empresas" element={<EventsPage />} />
         <Route path="/contacto" element={<ContactPage />} />
         {/* Intranet Routes */}
         <Route path="/intranet/login" element={<LoginPage />} />
+        <Route path="/intranet" element={<IntranetDashboard />} /> {/* Route added as requested */}
         <Route path="/intranet/dashboard" element={<IntranetDashboard />} />
         
         {/* Modules with Sidebar */}
+        <Route path="/intranet/quotes" element={<QuotesPage />} />
+        <Route path="/intranet/vacacional" element={<QuotesPage />} /> {/* Alias */}
+        <Route path="/intranet/corporativo" element={<QuotesPage />} /> {/* Alias */}
+        <Route path="/intranet/admin" element={<AdminDashboard />} />
+        
         <Route element={<IntranetLayout />}>
-          <Route path="/intranet/admin" element={<AdminDashboard />} />
-          <Route path="/intranet/quotes" element={<QuotesPage />} />
-          <Route path="/intranet/vacacional" element={<QuotesPage />} /> {/* Alias */}
-          <Route path="/intranet/corporativo" element={<QuotesPage />} /> {/* Alias */}
           <Route path="/intranet/sales" element={<SalesPage />} />
           <Route path="/intranet/finance" element={<FinancePage />} />
           <Route path="/intranet/contabilidad" element={<FinancePage />} /> {/* Alias */}

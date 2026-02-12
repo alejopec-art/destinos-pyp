@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Palmtree, Briefcase, Calculator, LayoutDashboard, Plus, ArrowRight, LogOut, Calendar, Gift, Plane } from 'lucide-react';
+import TrmMonitor from '../../components/TrmMonitor';
 
 const Dashboard = () => {
   const modules = [
@@ -79,7 +80,7 @@ const Dashboard = () => {
         </div>
 
         {/* Widgets Informativos - Estilo Glass Neon */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 max-w-7xl mx-auto">
             {/* Widget Cumpleaños */}
             <motion.div 
                 initial={{ opacity: 0, x: -20 }} 
@@ -135,6 +136,9 @@ const Dashboard = () => {
                     <p className="text-[10px] text-emerald-400 mt-1 text-right font-mono">T-Minus: 24h</p>
                 </div>
             </motion.div>
+
+            {/* Monitor Financiero TRM */}
+            <TrmMonitor />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
@@ -190,6 +194,8 @@ const Dashboard = () => {
                     </motion.div>
                 </Link>
             ))}
+
+            {/* Monitor Financiero TRM */}
         </div>
       </div>
     </div>

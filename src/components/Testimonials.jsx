@@ -4,27 +4,27 @@ import { Star, Quote } from 'lucide-react';
 const testimonials = [
     {
         id: 1,
-        name: 'María González',
-        location: 'Madrid, España',
+        name: 'Rosa Rodríguez',
+        location: 'Cusco, Perú',
         image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
         rating: 5,
-        text: '¡El mejor viaje de mi vida! La organización fue impecable y los destinos superaron todas mis expectativas. Definitivamente volveré a viajar con Destinos P&P.'
+        text: 'Gracias a Destinos P&P…Celebramos el cumple de mi mami en Quinta del Mar “el paraíso” en playa del francés – Tolú, un lindo sitio, acogedor, tranquilo, organizado, nos sentimos muy bien, la comida deliciosa, muy buena la atención del personal a cargo, Super recomendado el lugar.'
     },
     {
         id: 2,
-        name: 'Carlos Rodríguez',
-        location: 'Bogotá, Colombia',
-        image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+        name: 'Angela Montenegro',
+        location: 'Cliente Frecuente',
+        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
         rating: 5,
-        text: 'Atención personalizada las 24 horas. Tuvimos un pequeño inconveniente con un vuelo y lo solucionaron al instante. Muy recomendados.'
+        text: 'Tengo la fortuna de tener la mejor agencia de turismo, son ustedes muy especiales gracias por presentarnos la montaña de los 7 colores en Cusco Perú Rosa Rodríguez'
     },
     {
         id: 3,
-        name: 'Ana Smith',
-        location: 'Londres, UK',
-        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        rating: 4,
-        text: 'Excelentes precios y destinos exclusivos. Me encantó la guía turística en París. Una experiencia inolvidable para toda mi familia.'
+        name: 'Familia Viajera',
+        location: 'Tolú, Colombia',
+        image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+        rating: 5,
+        text: 'Me encanto la experiencia de viajar por intermedio de ustedes, agradezco lo meticulosas y detallistas en todo el proceso. Regresamos feliz y con ganas de seguir viajando'
     }
 ];
 

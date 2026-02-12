@@ -19,14 +19,14 @@ const Header = () => {
         {/* Logo */}
         <div className="flex items-center gap-2">
           <Link to="/">
-            <img src="/logo-destinos.png" alt="Destinos P&P Logo" className="h-16 w-auto" />
+            <img src="/logo-destinos.png" alt="Destinos P&P Logo" className="h-14 w-auto object-contain" />
           </Link>
         </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold tracking-wider opacity-90 text-gray-800">
           <Link to="/" className={isActive('/')}>
-            <Home className="w-4 h-4" /> HOGAR
+            <Home className="w-4 h-4" /> SERVICIOS
           </Link>
           <Link to="/paquetes" className={isActive('/paquetes')}>
             <Briefcase className="w-4 h-4" /> PAQUETES
@@ -34,8 +34,8 @@ const Header = () => {
           <Link to="/blog" className={isActive('/blog')}>
             <Building2 className="w-4 h-4" /> HOTELES
           </Link>
-          <Link to="/eventos" className={isActive('/eventos')}>
-            <Calendar className="w-4 h-4" /> EVENTOS
+          <Link to="/empresas" className={isActive('/empresas')}>
+            <Calendar className="w-4 h-4" /> EMPRESAS
           </Link>
           <Link to="/nosotros" className={isActive('/nosotros')}>
             <Users className="w-4 h-4" /> SOBRE NOSOTROS
@@ -75,9 +75,9 @@ const Header = () => {
                 className={`py-2 ${location.pathname === '/' ? 'text-yellow-500' : 'hover:text-primary'}`} 
                 onClick={() => setIsOpen(false)}
               >
-                HOGAR
+                SERVICIOS
               </Link>
-              <Link 
+              <Link  
                 to="/paquetes" 
                 className={`py-2 ${location.pathname === '/paquetes' ? 'text-yellow-500' : 'hover:text-primary'}`} 
                 onClick={() => setIsOpen(false)}
@@ -92,11 +92,11 @@ const Header = () => {
                 <Building2 className="w-4 h-4" /> HOTELES
               </Link>
               <Link 
-                to="/eventos" 
-                className={`py-2 flex items-center gap-2 ${location.pathname === '/eventos' ? 'text-yellow-500' : 'hover:text-primary'}`} 
+                to="/empresas" 
+                className={`py-2 flex items-center gap-2 ${location.pathname === '/empresas' ? 'text-yellow-500' : 'hover:text-primary'}`} 
                 onClick={() => setIsOpen(false)}
               >
-                <Calendar className="w-4 h-4" /> EVENTOS
+                <Calendar className="w-4 h-4" /> EMPRESAS
               </Link>
             <Link 
               to="/nosotros" 

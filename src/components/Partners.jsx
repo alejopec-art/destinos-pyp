@@ -1,22 +1,25 @@
 import React from 'react';
 
 const partners = [
-  { name: 'Avianca', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Avianca_logo.svg/800px-Avianca_logo.svg.png' },
-  { name: 'LATAM', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Latam-logo_-v_%28Indigo%29.svg/800px-Latam-logo_-v_%28Indigo%29.svg.png' },
-  { name: 'Copa Airlines', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Copa_Airlines_Logo.svg/800px-Copa_Airlines_Logo.svg.png' },
-  { name: 'Wingo', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Wingo_Logo.svg/800px-Wingo_Logo.svg.png' },
-  { name: 'Satena', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/61/Satena_logo.png/800px-Satena_logo.png' },
-  { name: 'Clic Air', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e0/Clic_Air_Colombia.webp' },
-  { name: 'JetSmart', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/JetSmart_Logo.svg/800px-JetSmart_Logo.svg.png' },
-  { name: 'American Airlines', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/American_Airlines_logo_2013.svg/800px-American_Airlines_logo_2013.svg.png' },
-  { name: 'Iberia', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/Iberia_Airlines_logo.svg/800px-Iberia_Airlines_logo.svg.png' },
-  { name: 'Air Europa', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Air_Europa_Logo.svg/800px-Air_Europa_Logo.svg.png' },
-  { name: 'Emirates', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Emirates_logo.svg/800px-Emirates_logo.svg.png' },
-  { name: 'Qatar Airways', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Qatar_Airways_Logo.svg/800px-Qatar_Airways_Logo.svg.png' },
-  { name: 'Delta', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Delta_logo.svg/800px-Delta_logo.svg.png' },
-  { name: 'Air France', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Air_France_Logo.svg/800px-Air_France_Logo.svg.png' },
-  { name: 'Lufthansa', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/Lufthansa_Logo_2018.svg/800px-Lufthansa_Logo_2018.svg.png' },
-  { name: 'Turkish Airlines', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Turkish_Airlines_logo.svg/800px-Turkish_Airlines_logo.svg.png' },
+  { name: 'Decameron', logo: '/logos/logo-decameron.png' },
+  { name: 'On Vacation', logo: '/logos/logo-on-vacation.png' },
+  { name: 'Hoteles RIU', logo: '/logos/logo-riu.png' },
+  { name: 'Avianca', logo: '/logos/logo-avianca.png' },
+  { name: 'LATAM', logo: '/logos/logo-latam.png' },
+  { name: 'Copa Airlines', logo: '/logos/logo-copa.svg' },
+  { name: 'Wingo', logo: '/logos/logo-wingo.png' },
+  { name: 'Satena', logo: '/logos/logo-satena.png' },
+  { name: 'Clic Air', logo: '/logos/logo-clic-air.png' },
+  { name: 'JetSmart', logo: '/logos/logo-jetsmart.png' },
+  { name: 'American Airlines', logo: '/logos/logo-american.png' },
+  { name: 'Iberia', logo: '/logos/logo-iberia.png' },
+  { name: 'Air Europa', logo: '/logos/logo-air-europa.png' },
+  { name: 'Emirates', logo: '/logos/logo-emirates.png' },
+  { name: 'Qatar Airways', logo: '/logos/logo-qatar.png' },
+  { name: 'Delta', logo: '/logos/logo-delta.png' },
+  { name: 'Air France', logo: '/logos/logo-air-france.png' },
+  { name: 'Lufthansa', logo: '/logos/logo-lufthansa.png' },
+  { name: 'Turkish Airlines', logo: '/logos/logo-turkish.png' },
 ];
 
 const Partners = () => {
@@ -27,8 +30,8 @@ const Partners = () => {
             <div className="absolute inset-y-0 right-0 w-20 md:w-32 bg-gradient-to-l from-white to-transparent z-10"></div>
 
             <div className="container mx-auto px-4 mb-12 text-center">
-                 <p className="text-[#000080] text-sm font-bold tracking-[0.2em] uppercase mb-2">Vuela con los mejores</p>
-                 <h2 className="text-3xl font-serif font-bold text-gray-900">Nuestras Aerolíneas Aliadas</h2>
+                 <p className="text-[#000080] text-sm font-bold tracking-[0.2em] uppercase mb-2">VIAJA CON LOS MEJORES</p>
+                 <h2 className="text-3xl font-serif font-bold text-gray-900">Nuestros Proveedores</h2>
             </div>
 
             <div className="flex w-full overflow-hidden group py-4">

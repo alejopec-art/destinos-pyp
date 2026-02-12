@@ -28,9 +28,12 @@ const LoginPage = () => {
                 backgroundImage: 'url("/fondo-intranet.jpg")', // Imagen local en carpeta public
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                imageRendering: 'high-quality', // Renderizado de alta calidad
             }}
         >
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
+            {/* Capa de superposición para suavizar transición */}
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>
         </div>
 
         {/* Formulario Glassmorphism */}

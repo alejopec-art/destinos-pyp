@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronUp } from 'lucide-react';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
+import ServicesSection from '../components/ServicesSection';
 import Destinations from '../components/Destinations';
 import Stats from '../components/Stats';
 import Promo from '../components/Promo';
@@ -12,7 +13,6 @@ import Blog from '../components/Blog';
 import Contact from '../components/Contact';
 import Newsletter from '../components/Newsletter';
 import Footer from '../components/Footer';
-import WhatsAppButton from '../components/WhatsAppButton';
 
 const Home = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -39,6 +39,7 @@ const Home = () => {
       <Header />
       <main>
         <Hero />
+        <ServicesSection />
         {/* Packages section removed from here */}
         <Destinations />
         <Stats />
@@ -52,8 +53,6 @@ const Home = () => {
       </main>
       <Footer />
       
-      <WhatsAppButton />
-
       {/* Scroll to Top Button */}
       <button 
         onClick={scrollToTop}

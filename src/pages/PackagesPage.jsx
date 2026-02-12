@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import WhatsAppButton from '../components/WhatsAppButton';
 import FeaturedCarousel from '../components/FeaturedCarousel';
 import { MapPin, Calendar, Search, Filter, Star, Clock, Users, ArrowRight, Percent, FileText, CreditCard, ShieldCheck, Plane, Car, Bus, Camera, BedDouble, Briefcase } from 'lucide-react';
 
@@ -509,7 +508,6 @@ const PackagesPage = () => {
       </div>
 
       <Footer />
-      <WhatsAppButton />
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, FileText, CreditCard, BarChart3, ShieldCheck, Settings, LogOut, Map } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, BarChart3, ShieldCheck, Settings, LogOut, Map, Plane } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, path, active }) => (
   <Link to={path}>
@@ -58,12 +58,14 @@ const IntranetLayout = () => {
       <aside className="w-64 bg-[#1e293b]/40 backdrop-blur-xl border-r border-slate-700/30 flex flex-col hidden md:flex relative z-10">
         <div className="p-6">
             <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">D</div>
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                    <Plane className="w-5 h-5 text-white" />
+                </div>
                 Destinos P&P
             </h2>
         </div>
         
-        <nav className="flex-1 px-4 py-4 space-y-8 overflow-y-auto">
+        <nav className="flex-1 px-4 py-4 space-y-8 overflow-hidden">
           <div>
             <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Principal</p>
             <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/intranet/dashboard" active={location.pathname === '/intranet/dashboard'} />

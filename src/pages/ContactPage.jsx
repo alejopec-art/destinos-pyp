@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Facebook, Instagram, Send, ChevronDown, ChevronUp, MessageSquare, Clock, Youtube, Linkedin, Twitter } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Phone, MapPin, Facebook, Instagram, Send, ChevronDown, ChevronUp, MessageSquare, Clock, Youtube, Linkedin, Twitter, FileText, X } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
 const ContactPage = () => {
   const [formStatus, setFormStatus] = useState('idle');
+  const [isPQRModalOpen, setIsPQRModalOpen] = useState(false);
   const [activeAccordion, setActiveAccordion] = useState(null);
 
   const handleSubmit = (e) => {
@@ -112,8 +113,19 @@ const ContactPage = () => {
                   </a>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white/50 hover:shadow-2xl transition-all duration-300 group sm:col-span-2">
-                  <div className="flex flex-col md:flex-row gap-6 items-start">
+                <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white/50 hover:shadow-2xl transition-all duration-300 group">
+                  <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <FileText className="w-7 h-7 text-amber-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">PQR</h3>
+                  <p className="text-gray-500 text-sm mb-4">Canal formal para radicar tus solicitudes bajo normas legales</p>
+                  <button onClick={() => setIsPQRModalOpen(true)} className="text-amber-600 font-bold hover:underline inline-flex items-center gap-2">
+                    Radicar aquí <Send className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="bg-white/80 backdrop-blur-md p-8 rounded-3xl shadow-xl border border-white/50 hover:shadow-2xl transition-all duration-300 group">
+                  <div className="flex flex-col gap-6 items-start">
                     <div className="w-14 h-14 bg-purple-100 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                       <MapPin className="w-7 h-7 text-purple-600" />
                     </div>
@@ -329,6 +341,75 @@ const ContactPage = () => {
       </section>
 
       <Footer />
+      
+      {/* PQR Modal */}
+      <AnimatePresence>
+        {isPQRModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setIsPQRModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-6 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5" /> Radicar PQR
+                </h3>
+                <button onClick={() => setIsPQRModalOpen(false)} className="text-white/80 hover:text-white transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <div className="p-6 md:p-8">
+                  <form onSubmit={(e) => { e.preventDefault(); setTimeout(() => setIsPQRModalOpen(false), 2000); }} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Nombre Completo</label>
+                              <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all" placeholder="Tu nombre" />
+                          </div>
+                          <div className="space-y-2">
+                              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">ID Reserva</label>
+                              <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all" placeholder="Ej: REF-1234" />
+                          </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Tipo de Solicitud</label>
+                          <select className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all">
+                              <option>Petición</option>
+                              <option>Queja</option>
+                              <option>Reclamo</option>
+                              <option>Felicitación</option>
+                          </select>
+                      </div>
+
+                      <div className="space-y-2">
+                          <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Mensaje</label>
+                          <textarea required rows="4" className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none transition-all resize-none" placeholder="Describe tu solicitud..."></textarea>
+                      </div>
+
+                      <button 
+                          type="submit" 
+                          className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2"
+                      >
+                          Enviar Solicitud <Send className="w-5 h-5" />
+                      </button>
+                  </form>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
