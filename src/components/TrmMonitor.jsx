@@ -3,96 +3,78 @@ import { motion } from 'framer-motion';
 import { DollarSign, RefreshCw, AlertCircle, Calculator, Activity } from 'lucide-react';
 
 const TrmMonitor = () => {
-    // 1. Configuración y Constantes
-    const CACHE_KEY = 'destinos_trm_cache';
-    const SPREAD_OPERATIVO = 50; // Margen de $50 pesos para cubrir spread bancario
-    const API_URL = 'https://api.exchangerate-api.com/v4/latest/USD'; // API Real y Estable
-    const UPDATE_INTERVAL = 6 * 60 * 60 * 1000; // Actualización cada 6 Horas
+    const SPREAD_OPERATIVO = 50;
+    const PRIMARY_URL = 'https://api.exchangerate.host/latest?base=USD&symbols=COP';
+    const FALLBACK_URL = 'https://open.er-api.com/v6/latest/USD';
+    const UPDATE_INTERVAL = 60 * 60 * 1000;
 
     // 2. Estado
     const [trm, setTrm] = useState(null);
-    const [status, setStatus] = useState('loading'); // 'loading', 'live', 'cache', 'error'
+    const [status, setStatus] = useState('loading'); // 'loading', 'live', 'error'
     const [calcAmount, setCalcAmount] = useState('');
     const [conversion, setConversion] = useState(null);
 
-    // 3. Lógica de Datos Robusta (API + Timeout + Fallback)
     const fetchTrm = async () => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
 
         try {
-            const response = await fetch(API_URL, { signal: controller.signal });
+            setStatus('loading');
+
+            let officialRate = null;
+
+            try {
+                const response = await fetch(PRIMARY_URL, { signal: controller.signal, cache: 'no-store' });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.rates && data.rates.COP) {
+                        officialRate = data.rates.COP;
+                    }
+                }
+            } catch (_) {}
+
+            if (!officialRate) {
+                const ctrl2 = new AbortController();
+                setTimeout(() => ctrl2.abort(), 7000);
+                const res2 = await fetch(FALLBACK_URL, { signal: ctrl2.signal, cache: 'no-store' });
+                if (!res2.ok) throw new Error('Error en API fallback');
+                const data2 = await res2.json();
+                if (!data2 || !data2.rates || !data2.rates.COP) throw new Error('Datos TRM fallback no disponibles');
+                officialRate = data2.rates.COP;
+            }
+
             clearTimeout(timeoutId);
 
-            if (!response.ok) throw new Error('Error en API de Divisas');
-            
-            const data = await response.json();
-            if (!data || !data.rates || !data.rates.COP) throw new Error('Datos de TRM no disponibles');
-
-            const officialRate = data.rates.COP;
-            
-            // Guardar en Cache y Estado
-            const newData = {
-                rate: officialRate,
-                date: new Date().toISOString()
-            };
-            
             setTrm(officialRate);
             setStatus('live');
-            localStorage.setItem(CACHE_KEY, JSON.stringify(newData));
-
+            try {
+                localStorage.setItem('LATEST_TRM', String(officialRate));
+            } catch (_) {}
         } catch (error) {
-            console.warn('Fallo en TRM en vivo, buscando caché...', error);
-            loadFromCache();
-        }
-    };
-
-    const loadFromCache = () => {
-        try {
-            const cached = localStorage.getItem(CACHE_KEY);
-            if (cached) {
-                const data = JSON.parse(cached);
-                setTrm(data.rate);
-                setStatus('cache');
-            } else {
-                // Si falla API y no hay caché, mostramos error crítico
-                setTrm(null);
-                setStatus('error');
-            }
-        } catch (e) {
             setTrm(null);
             setStatus('error');
         }
     };
 
-    // 4. Ciclo de Vida
     useEffect(() => {
-        // Intentar carga inicial rápida desde caché para UX inmediata
-        loadFromCache(); 
-        // Luego buscar dato fresco
         fetchTrm();
-
         const interval = setInterval(fetchTrm, UPDATE_INTERVAL);
         return () => clearInterval(interval);
     }, []);
 
     // 5. Calculadora Instantánea
     const handleCalculation = (val) => {
-        // Permitir entrada vacía para limpiar
         if (val === '') {
             setCalcAmount('');
             setConversion(null);
             return;
         }
 
-        // Sanitizar entrada: solo números y un punto decimal
         const sanitizedVal = val.replace(/[^0-9.]/g, '');
         setCalcAmount(sanitizedVal);
-        
-        // Validación estricta para el cálculo
+
         const numberVal = parseFloat(sanitizedVal);
 
-        // Si no hay TRM válida o el valor no es un número, no calculamos
         if (!trm || isNaN(numberVal)) {
             setConversion(null);
             return;
@@ -117,10 +99,10 @@ const TrmMonitor = () => {
                 
                 {/* Indicador de Estado */}
                 <div className={`flex items-center gap-2 px-2 py-1 rounded-full border text-[10px] font-bold tracking-wider ${
-                    status === 'live' 
-                        ? 'bg-green-500/10 border-green-500/20 text-green-400' 
-                        : status === 'cache'
-                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                    status === 'live'
+                        ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                        : status === 'loading'
+                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
                         : 'bg-red-500/10 border-red-500/20 text-red-400'
                 }`}>
                     {status === 'live' && (
@@ -129,7 +111,7 @@ const TrmMonitor = () => {
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                         </span>
                     )}
-                    {status === 'live' ? 'EN VIVO' : status === 'cache' ? 'DATA CACHÉ' : 'OFFLINE'}
+                    {status === 'live' ? 'EN VIVO' : status === 'loading' ? 'CARGANDO' : 'SIN CONEXIÓN'}
                 </div>
             </div>
 
@@ -142,7 +124,7 @@ const TrmMonitor = () => {
                         <p className="text-[10px] text-red-400 font-bold flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" /> Error de conexión:
                         </p>
-                        <p className="text-[10px] text-red-300">Por favor verifica la TRM manualmente</p>
+                        <p className="text-[10px] text-red-300">Esperando TRM en vivo. Verifica tu conexión.</p>
                     </div>
                 ) : (
                     <>
@@ -152,11 +134,6 @@ const TrmMonitor = () => {
                             </span>
                             <span className="text-xs text-slate-500">COP</span>
                         </div>
-                        {status === 'cache' && (
-                            <p className="text-[10px] text-amber-500/80 mt-1 flex items-center gap-1">
-                                <AlertCircle className="w-3 h-3" /> Usando última tasa registrada
-                            </p>
-                        )}
                     </>
                 )}
             </div>
@@ -170,7 +147,12 @@ const TrmMonitor = () => {
                         value={calcAmount}
                         onChange={(e) => handleCalculation(e.target.value)}
                         placeholder="Calcular USD..."
-                        className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all"
+                        disabled={status !== 'live' || !trm}
+                        className={`w-full bg-slate-950/50 border rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder-slate-600 focus:outline-none transition-all ${
+                            status === 'live'
+                                ? 'border-slate-700 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50'
+                                : 'border-slate-800 opacity-60 cursor-not-allowed'
+                        }`}
                     />
                 </div>
                 
@@ -180,7 +162,7 @@ const TrmMonitor = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-2 flex flex-col items-end px-2"
                     >
-                        <span className="text-[10px] text-slate-400 mb-0.5">Total (+Spread)</span>
+                        <span className="text-[10px] text-slate-400 mb-0.5">TOTAL</span>
                         <span className="text-lg font-bold text-blue-300 font-mono tracking-tight break-all text-right w-full">
                             {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(conversion)}
                         </span>

@@ -1,22 +1,27 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!email.endsWith('@destinospp.com')) {
-      setError('Acceso denegado: Use su correo corporativo');
-      return;
+    setError('');
+    try {
+      await login(email, password);
+      const from = location.state?.from?.pathname || '/intranet/dashboard';
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err.message || 'Acceso denegado');
     }
-    // Simulación de login exitoso
-    navigate('/intranet/dashboard');
   };
 
   return (

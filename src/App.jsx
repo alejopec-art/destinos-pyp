@@ -16,39 +16,117 @@ import FinancePage from './pages/intranet/FinancePage';
 import LogisticsPage from './pages/intranet/LogisticsPage';
 import SettingsPage from './pages/intranet/SettingsPage';
 import WhatsAppWidget from './components/WhatsAppWidget';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './context/AuthContext';
+import AccessDeniedPage from './pages/intranet/AccessDenied';
 
 function App() {
   return (
-    <Router>
-      <WhatsAppWidget />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/paquetes" element={<PackagesPage />} />
-        <Route path="/blog" element={<HotelBlog />} />
-        <Route path="/empresas" element={<EventsPage />} />
-        <Route path="/contacto" element={<ContactPage />} />
-        {/* Intranet Routes */}
-        <Route path="/intranet/login" element={<LoginPage />} />
-        <Route path="/intranet" element={<IntranetDashboard />} /> {/* Route added as requested */}
-        <Route path="/intranet/dashboard" element={<IntranetDashboard />} />
-        
-        {/* Modules with Sidebar */}
-        <Route path="/intranet/quotes" element={<QuotesPage />} />
-        <Route path="/intranet/vacacional" element={<QuotesPage />} /> {/* Alias */}
-        <Route path="/intranet/corporativo" element={<QuotesPage />} /> {/* Alias */}
-        <Route path="/intranet/admin" element={<AdminDashboard />} />
-        
-        <Route element={<IntranetLayout />}>
-          <Route path="/intranet/sales" element={<SalesPage />} />
-          <Route path="/intranet/finance" element={<FinancePage />} />
-          <Route path="/intranet/contabilidad" element={<FinancePage />} /> {/* Alias */}
-          <Route path="/intranet/logistics" element={<LogisticsPage />} />
-          <Route path="/intranet/settings" element={<SettingsPage />} />
-        </Route>
-
-        <Route path="/nosotros" element={<AboutUs />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <WhatsAppWidget />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/paquetes" element={<PackagesPage />} />
+          <Route path="/blog" element={<HotelBlog />} />
+          <Route path="/empresas" element={<EventsPage />} />
+          <Route path="/contacto" element={<ContactPage />} />
+          <Route path="/nosotros" element={<AboutUs />} />
+          <Route path="/intranet/login" element={<LoginPage />} />
+          <Route path="/intranet/denied" element={<AccessDeniedPage />} />
+          <Route
+            path="/intranet"
+            element={
+              <ProtectedRoute module="dashboard">
+                <IntranetDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intranet/dashboard"
+            element={
+              <ProtectedRoute module="dashboard">
+                <IntranetDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intranet/quotes"
+            element={
+              <ProtectedRoute module="vacacional">
+                <QuotesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intranet/vacacional"
+            element={
+              <ProtectedRoute module="vacacional">
+                <QuotesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intranet/corporativo"
+            element={
+              <ProtectedRoute module="corporativo">
+                <QuotesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/intranet/admin"
+            element={
+              <ProtectedRoute module="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route element={<IntranetLayout />}>
+            <Route
+              path="/intranet/sales"
+              element={
+                <ProtectedRoute module="corporativo">
+                  <SalesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intranet/finance"
+              element={
+                <ProtectedRoute module="contabilidad">
+                  <FinancePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intranet/contabilidad"
+              element={
+                <ProtectedRoute module="contabilidad">
+                  <FinancePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intranet/logistics"
+              element={
+                <ProtectedRoute module="vacacional">
+                  <LogisticsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/intranet/settings"
+              element={
+                <ProtectedRoute module="admin">
+                  <SettingsPage />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

@@ -1,38 +1,172 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
     Users, Clock, Activity, LogIn, LogOut, ChevronDown, 
     MoreHorizontal, Circle
 } from 'lucide-react';
+import { supabase } from '../../services/supabaseClient';
+import { useAuth } from '../../context/AuthContext';
 
-const TeamMonitor = ({ advisors, embedded = false }) => {
+const TEAM = [
+    { 
+        id: 'viajes@destinospp.com',
+        email: 'viajes@destinospp.com',
+        name: 'Luisa Paola Caicedo',
+        avatar: 'https://i.pravatar.cc/150?u=luisa'
+    },
+    {
+        id: 'producto@destinospp.com',
+        email: 'producto@destinospp.com',
+        name: 'Paola Palacios',
+        avatar: 'https://i.pravatar.cc/150?u=paola'
+    },
+    {
+        id: 'contabilidad@destinospp.com',
+        email: 'contabilidad@destinospp.com',
+        name: 'Graciela Rozo',
+        avatar: 'https://i.pravatar.cc/150?u=graciela'
+    },
+    {
+        id: 'ventas@destinospp.com',
+        email: 'ventas@destinospp.com',
+        name: 'Juliana Rojas',
+        avatar: 'https://i.pravatar.cc/150?u=juliana'
+    },
+    {
+        id: 'ventas2@destinospp.com',
+        email: 'ventas2@destinospp.com',
+        name: 'Jenniffer Moreno',
+        avatar: 'https://i.pravatar.cc/150?u=jenniffer'
+    },
+    {
+        id: 'operaciones1@destinospp.com',
+        email: 'operaciones1@destinospp.com',
+        name: 'Sandra Bonnett',
+        avatar: 'https://i.pravatar.cc/150?u=sandra'
+    }
+];
+
+const TeamMonitor = ({ advisors, embedded = false, direction = 'up' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedAdvisor, setSelectedAdvisor] = useState(null);
+    const [presence, setPresence] = useState({});
+    const { user } = useAuth();
 
-    // Mock data si no se proveen props (para preview)
-    const teamData = advisors || [
-        { 
-            id: 1, name: 'Paola Palacios', status: 'online', 
-            loginTime: '08:00 AM', lastActive: 'Hace 2 min', totalTime: '4h 30m',
-            avatar: 'https://i.pravatar.cc/150?u=paola'
-        },
-        { 
-            id: 2, name: 'Carlos Ruiz', status: 'idle', 
-            loginTime: '08:15 AM', lastActive: 'Hace 15 min', totalTime: '4h 15m',
-            avatar: 'https://i.pravatar.cc/150?u=carlos'
-        },
-        { 
-            id: 3, name: 'Ana María', status: 'offline', 
-            loginTime: '08:00 AM', logoutTime: '12:00 PM', totalTime: '4h 00m',
-            avatar: 'https://i.pravatar.cc/150?u=ana'
-        },
-        { 
-            id: 4, name: 'Jorge Pérez', status: 'online', 
-            loginTime: '09:00 AM', lastActive: 'Ahora', totalTime: '3h 30m',
-            avatar: 'https://i.pravatar.cc/150?u=jorge'
+    useEffect(() => {
+        if (!supabase) return;
+
+        const email = user?.email;
+        const channel = supabase.channel('presence_team', {
+            config: {
+                presence: {
+                    key: email || 'anon'
+                }
+            }
+        });
+
+        channel.on('presence', { event: 'sync' }, () => {
+            const state = channel.presenceState();
+            const map = {};
+            Object.values(state).forEach(list => {
+                list.forEach(meta => {
+                    if (meta.email) {
+                        map[meta.email] = meta;
+                    }
+                });
+            });
+            setPresence(map);
+        });
+
+        channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED' && email) {
+                await channel.track({ email, last_seen: new Date().toISOString() });
+            }
+        });
+
+        const handleVisibility = () => {
+            if (!email) return;
+            if (document.visibilityState === 'visible') {
+                channel.track({ email, last_seen: new Date().toISOString() });
+            } else {
+                channel.untrack();
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibility);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibility);
+            channel.unsubscribe();
+        };
+    }, [user?.email]);
+
+    const teamData = useMemo(() => {
+        const now = Date.now();
+        const base = advisors || TEAM;
+
+        // Fallback local: si Supabase no está configurado todavía,
+        // marcamos al usuario actual como online y el resto desconectado
+        if (!supabase) {
+            return base.map(member => {
+                const isSelf = user && member.email === user.email;
+                if (isSelf) {
+                    return {
+                        ...member,
+                        status: 'online',
+                        lastActive: 'Ahora',
+                        loginTime: '--:--',
+                        logoutTime: '',
+                        totalTime: '--:--'
+                    };
+                }
+                return {
+                    ...member,
+                    status: 'offline',
+                    lastActive: 'Desconectado',
+                    loginTime: '--:--',
+                    logoutTime: '',
+                    totalTime: '--:--'
+                };
+            });
         }
-    ];
+
+        // Modo realtime con Supabase Presence
+        return base.map(member => {
+            const meta = presence[member.email];
+            if (!meta) {
+                return {
+                    ...member,
+                    status: 'offline',
+                    lastActive: 'Desconectado',
+                    loginTime: '--:--',
+                    logoutTime: '',
+                    totalTime: '--:--'
+                };
+            }
+            const last = meta.last_seen ? new Date(meta.last_seen).getTime() : now;
+            const diffMin = Math.floor((now - last) / 60000);
+            let status = 'online';
+            let lastActive = 'Ahora';
+            if (diffMin > 5) {
+                status = 'offline';
+                lastActive = `Hace ${diffMin} min`;
+            } else if (diffMin > 1) {
+                status = 'idle';
+                lastActive = `Hace ${diffMin} min`;
+            }
+            return {
+                ...member,
+                status,
+                lastActive,
+                loginTime: '--:--',
+                logoutTime: '',
+                totalTime: '--:--'
+            };
+        });
+    }, [advisors, presence, user]);
 
     const onlineCount = teamData.filter(a => a.status !== 'offline').length;
+    const dropdownPosition = direction === 'down' ? 'top-full mt-4' : 'bottom-full mb-4';
+    const dropdownOrigin = direction === 'down' ? 'origin-top' : 'origin-bottom';
 
     const getStatusColor = (status) => {
         switch(status) {
@@ -44,7 +178,7 @@ const TeamMonitor = ({ advisors, embedded = false }) => {
     };
 
     return (
-        <div className={`${embedded ? 'w-full relative' : 'fixed bottom-6 right-6 z-50'} animate-fade-in flex flex-col items-end gap-4`}>
+        <div className={`${embedded ? 'w-full relative' : 'fixed bottom-6 right-6 z-50'} animate-fade-in flex flex-col ${embedded ? 'items-start' : 'items-end'} gap-4`}>
             
             {/* Tarjeta de Detalle (Popover) */}
             {selectedAdvisor && (
@@ -128,7 +262,7 @@ const TeamMonitor = ({ advisors, embedded = false }) => {
 
                 {/* Lista Desplegable Expandida */}
                 {isOpen && (
-                    <div className="absolute bottom-full left-0 right-0 mb-4 bg-[#1e293b]/95 backdrop-blur-2xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden animate-slide-up origin-bottom">
+                    <div className={`absolute left-0 right-0 ${dropdownPosition} bg-[#1e293b]/95 backdrop-blur-2xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden animate-slide-up ${dropdownOrigin}`}>
                         <div className="p-3 space-y-2 max-h-72 overflow-y-auto custom-scrollbar">
                             {teamData.map(advisor => (
                                 <button

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Palmtree, Briefcase, Calculator, LayoutDashboard, Plus, ArrowRight, LogOut, Calendar, Gift, Plane } from 'lucide-react';
 import TrmMonitor from '../../components/TrmMonitor';
+import TeamMonitor from './TeamMonitor';
 
 const Dashboard = () => {
   const modules = [
@@ -77,6 +78,10 @@ const Dashboard = () => {
             >
                 Selecciona tu módulo de trabajo para acceder a las herramientas especializadas.
             </motion.p>
+        </div>
+
+        <div className="max-w-sm mb-8">
+          <TeamMonitor embedded={true} />
         </div>
 
         {/* Widgets Informativos - Estilo Glass Neon */}
