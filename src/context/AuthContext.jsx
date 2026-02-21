@@ -9,8 +9,8 @@ const RBAC_MATRIX = {
         modules: {
             dashboard: 'read',
             admin: 'full',
-            vacacional: 'read',
-            corporativo: 'read',
+            vacacional: 'full',
+            corporativo: 'full',
             contabilidad: 'read'
         }
     },
@@ -21,8 +21,8 @@ const RBAC_MATRIX = {
         modules: {
             dashboard: 'read',
             admin: 'full',
-            vacacional: 'read',
-            corporativo: 'read',
+            vacacional: 'full',
+            corporativo: 'full',
             contabilidad: 'read'
         }
     },
@@ -41,6 +41,7 @@ const RBAC_MATRIX = {
         role_label: 'Asesora Comercial',
         modules: {
             dashboard: 'read',
+            vacacional: 'full',
             corporativo: 'full'
         }
     },
@@ -50,6 +51,7 @@ const RBAC_MATRIX = {
         role_label: 'Asesora Comercial',
         modules: {
             dashboard: 'read',
+            vacacional: 'full',
             corporativo: 'full'
         }
     },
@@ -59,7 +61,8 @@ const RBAC_MATRIX = {
         role_label: 'Operaciones',
         modules: {
             dashboard: 'read',
-            vacacional: 'full'
+            vacacional: 'full',
+            corporativo: 'full'
         }
     }
 };
@@ -75,8 +78,22 @@ export const AuthProvider = ({ children }) => {
         if (stored) {
             try {
                 const parsed = JSON.parse(stored);
-                setUser(parsed);
-                // Sync with DB if available
+
+                // CRITICAL: Refresh modules from RBAC_MATRIX to ensure updates apply immediately
+                const currentConfig = RBAC_MATRIX[parsed.email.trim().toLowerCase()];
+                if (currentConfig) {
+                    const refreshedUser = {
+                        ...parsed,
+                        role: currentConfig.role,
+                        modules: currentConfig.modules,
+                        professional_role: parsed.professional_role || currentConfig.role_label
+                    };
+                    setUser(refreshedUser);
+                    localStorage.setItem('intranet_user', JSON.stringify(refreshedUser));
+                } else {
+                    setUser(parsed);
+                }
+
                 if (supabase) {
                     supabase
                         .from('profiles')
@@ -85,9 +102,12 @@ export const AuthProvider = ({ children }) => {
                         .single()
                         .then(({ data }) => {
                             if (data) {
-                                const merged = { ...parsed, ...data };
-                                setUser(merged);
-                                localStorage.setItem('intranet_user', JSON.stringify(merged));
+                                // Re-merge with DB but keep RBAC modules as source of truth for logic
+                                setUser(prev => {
+                                    const merged = { ...prev, ...data, modules: currentConfig?.modules || prev.modules };
+                                    localStorage.setItem('intranet_user', JSON.stringify(merged));
+                                    return merged;
+                                });
                             }
                         });
                 }

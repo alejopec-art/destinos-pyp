@@ -461,29 +461,25 @@ const QuotesPage = () => {
 
     // --- VISTAS AUXILIARES ---
 
-    const SupervisionLockScreen = () => (
+    const SupervisionLockScreen = ({ title, message }) => (
         <div className="bg-[#1e293b] border border-red-500/30 rounded-3xl p-12 text-center animate-fade-in relative overflow-hidden h-full flex flex-col justify-center">
             <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <div className="relative z-10 flex flex-col items-center max-w-lg mx-auto">
                 <div className="w-20 h-20 rounded-full bg-red-900/30 flex items-center justify-center mb-6 border border-red-500/50">
                     <Lock className="w-10 h-10 text-red-400" />
                 </div>
-                <h2 className="text-3xl font-black text-white uppercase mb-3">Modo Supervisión Activo</h2>
+                <h2 className="text-3xl font-black text-white uppercase mb-3">{title || 'Acceso Restringido'}</h2>
                 <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-                    Su perfil de <strong>Administrador/Gerencia</strong> tiene restringida la creación de nuevas cotizaciones operativas.
-                    Esta medida garantiza la separación de funciones y el control de calidad.
+                    {message || 'Su perfil tiene restringida la creación de nuevas cotizaciones operativas.'}
                 </p>
                 <div className="flex gap-4">
                     <button
-                        onClick={() => setActiveMainTab('admin')}
-                        className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-purple-900/20"
+                        onClick={() => setActiveMainTab('history')}
+                        className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-blue-900/20"
                     >
-                        <ShieldCheck className="w-4 h-4" /> Ir al Panel Maestro
+                        <LayoutDashboard className="w-4 h-4" /> Ver Historial
                     </button>
                 </div>
-                <p className="mt-8 text-[10px] text-slate-500 uppercase font-bold tracking-widest">
-                    Si necesita cotizar, cambie a perfil Asesor
-                </p>
             </div>
         </div>
     );
@@ -1797,6 +1793,7 @@ const QuotesPage = () => {
     );
 
     const FlightQuoteForm = () => {
+        const [currency, setCurrency] = useState('USD');
         // Estado principal que contiene las múltiples opciones de cotización
         const [flightQuotes, setFlightQuotes] = useState([
             {
@@ -2322,6 +2319,7 @@ const QuotesPage = () => {
     };
 
     const CruiseQuoteForm = () => {
+        const [currency, setCurrency] = useState('USD');
         const [enableThirdCabin, setEnableThirdCabin] = useState(false);
         const [thirdCabinTitle, setThirdCabinTitle] = useState('CABINA CON BALCÓN');
         const [thirdCabinPrice, setThirdCabinPrice] = useState('');
@@ -3765,7 +3763,7 @@ const QuotesPage = () => {
             ) : (
                 <>
                     {/* Mobile Overlay */}
-                    {userRole !== 'admin' && isSidebarOpen && (
+                    {isSidebarOpen && (
                         <div
                             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
                             onClick={() => setIsSidebarOpen(false)}
@@ -3773,169 +3771,163 @@ const QuotesPage = () => {
                     )}
 
                     {/* SIDEBAR (260px fixed width) */}
-                    {userRole !== 'admin' && (
-                        <aside className={`fixed md:relative top-0 left-0 z-40 w-[260px] h-screen bg-[#1e293b]/95 backdrop-blur-3xl border-r border-slate-700/50 flex flex-col shrink-0 overflow-hidden transition-transform duration-300 md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                            <div className="absolute top-4 right-4 md:hidden">
-                                <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-white">
-                                    <X className="w-6 h-6" />
-                                </button>
+                    <aside className={`fixed md:relative top-0 left-0 z-40 w-[260px] h-screen bg-[#1e293b]/95 backdrop-blur-3xl border-r border-slate-700/50 flex flex-col shrink-0 overflow-hidden transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+                        <div className="absolute top-4 right-4 md:hidden">
+                            <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-white">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-6 border-b border-slate-700/50">
+                            <div className="flex items-center gap-3 mb-1">
+                                <img src="/logo-destinos.png" alt="Destinos P&P" className="h-10 w-auto" />
                             </div>
-                            <div className="p-6 border-b border-slate-700/50">
-                                <div className="flex items-center gap-3 mb-1">
-                                    <img src="/logo-destinos.png" alt="Destinos P&P" className="h-10 w-auto" />
-                                </div>
-                                <h2 className="text-lg font-bold text-white flex items-center gap-2 pl-1">
-                                    {activeSubTab === 'corporativo' ? 'Corporativo' : (activeSubTab ? 'Vacacional' : 'Cotizaciones')}
-                                </h2>
-                                <p className="text-xs text-slate-500 mt-1">Gestión Integral de Viajes</p>
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2 pl-1">
+                                {activeSubTab === 'corporativo' ? 'Corporativo' : (activeSubTab ? 'Vacacional' : 'Cotizaciones')}
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-1">Gestión Integral de Viajes</p>
+                        </div>
+
+                        <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+                            {/* MENÚ COTIZACIONES */}
+                            <div className="space-y-1">
+                                <button
+                                    onClick={() => {
+                                        setIsQuotesOpen(!isQuotesOpen);
+                                        setActiveMainTab('cotizaciones');
+                                        setActiveSubTab(null);
+                                        setIsEditing(false);
+                                    }}
+                                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${activeMainTab === 'cotizaciones' ? 'bg-blue-600/20 text-blue-400 font-bold shadow-sm shadow-blue-900/10' : 'hover:bg-slate-800 text-slate-400'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <FileText className="w-5 h-5" />
+                                        <span className="font-medium">Cotizaciones</span>
+                                    </div>
+                                    {isQuotesOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                </button>
+
+                                <AnimatePresence>
+                                    {isQuotesOpen && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden pl-4 space-y-1"
+                                        >
+                                            {quoteOptions
+                                                .filter(type => {
+                                                    const modules = user?.modules || {};
+                                                    if (['nacional', 'internacional', 'crucero', 'quince', 'grupos', 'hotel', 'terrestre'].includes(type.id)) {
+                                                        return modules.vacacional === 'full' || modules.admin === 'full';
+                                                    }
+                                                    if (type.id === 'tiquetes') {
+                                                        return modules.corporativo === 'full' || modules.admin === 'full';
+                                                    }
+                                                    return true;
+                                                })
+                                                .map(type => (
+                                                    <button
+                                                        key={type.id}
+                                                        onClick={() => {
+                                                            setActiveMainTab('cotizaciones');
+                                                            setActiveSubTab(type.id);
+                                                            setIsEditing(false);
+                                                        }}
+                                                        className={`w-full flex items-center gap-3 p-2 rounded-lg text-sm transition-all ${activeMainTab === 'cotizaciones' && activeSubTab === type.id
+                                                            ? 'bg-blue-500 text-white font-bold shadow-md shadow-blue-900/20'
+                                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                                            }`}
+                                                    >
+                                                        <type.icon className="w-4 h-4" />
+                                                        {type.label}
+                                                    </button>
+                                                ))}
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
 
-                            <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
-                                {/* MENÚ COTIZACIONES */}
-                                {userRole !== 'admin' && (
-                                    <div className="space-y-1">
+                            {/* PESTAÑA AYUDA - ACCESO DIRECTO */}
+                            <button
+                                onClick={() => {
+                                    setActiveMainTab('ayuda');
+                                    setActiveSubTab(null);
+                                }}
+                                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${activeMainTab === 'ayuda'
+                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20 font-bold'
+                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                    }`}
+                            >
+                                <Book className={`w-5 h-5 ${activeMainTab === 'ayuda' ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'}`} />
+                                <div className="text-left">
+                                    <span className="block font-medium">Manual & Ayuda</span>
+                                    <span className={`text-[10px] ${activeMainTab === 'ayuda' ? 'text-blue-200' : 'text-slate-600'}`}>Recursos y soporte</span>
+                                </div>
+                            </button>
+
+                            {/* RESTO DE PESTAÑAS (Filtradas por Rol) */}
+                            {mainTabs
+                                .filter(item => {
+                                    const modules = user?.modules || {};
+                                    if (item.id === 'payments' || item.id === 'billing') return modules.contabilidad === 'full' || modules.admin === 'full';
+                                    if (item.id === 'settings' || item.id === 'history') return true;
+                                    if (item.id === 'confirmation' || item.id === 'reconfirm' || item.id === 'voucher') {
+                                        return modules.vacacional === 'full' || modules.corporativo === 'full' || modules.admin === 'full';
+                                    }
+                                    return true;
+                                })
+                                .map(item => {
+                                    // Lógica de acceso al Voucher
+                                    const currentRole = user?.role || userRole;
+                                    const isPrivileged = ['manager', 'accounting', 'admin'].includes(currentRole);
+                                    const isVoucher = item.id === 'voucher';
+
+                                    // El voucher se bloquea solo si es asesor (no privilegiado) y no ha completado facturación
+                                    const blocked = isVoucher && !isPrivileged && !validateBilling();
+
+                                    return (
                                         <button
+                                            key={item.id}
                                             onClick={() => {
-                                                setIsQuotesOpen(!isQuotesOpen);
-                                                setActiveMainTab('cotizaciones');
+                                                if (blocked) {
+                                                    setShowBillingErrors(true);
+                                                    return;
+                                                }
+                                                setActiveMainTab(item.id);
                                                 setActiveSubTab(null);
-                                                setIsEditing(false);
                                             }}
-                                            className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${activeMainTab === 'cotizaciones' ? 'bg-blue-600/20 text-blue-400 font-bold shadow-sm shadow-blue-900/10' : 'hover:bg-slate-800 text-slate-400'
+                                            title={blocked ? 'Atención: Completa “Tarifa Neta / Comisionable” antes de continuar' : ''}
+                                            disabled={blocked}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${activeMainTab === item.id
+                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20 font-bold'
+                                                : blocked
+                                                    ? 'text-slate-600 cursor-not-allowed bg-slate-800/40'
+                                                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <FileText className="w-5 h-5" />
-                                                <span className="font-medium">Cotizaciones</span>
+                                            <item.icon className={`w-5 h-5 ${activeMainTab === item.id ? 'text-white' : 'text-slate-500 group-hover:text-white'}`} />
+                                            <div className="text-left">
+                                                <span className="block font-medium">{item.label}</span>
+                                                <span className={`text-[10px] ${activeMainTab === item.id ? 'text-blue-200' : 'text-slate-600'}`}>{item.desc}</span>
                                             </div>
-                                            {isQuotesOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                         </button>
+                                    );
+                                })}
+                        </nav>
 
-                                        <AnimatePresence>
-                                            {isQuotesOpen && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden pl-4 space-y-1"
-                                                >
-                                                    {quoteOptions
-                                                        .filter(type => {
-                                                            const modules = user?.modules || {};
-                                                            if (['nacional', 'internacional', 'crucero', 'quince', 'grupos', 'hotel', 'terrestre'].includes(type.id)) {
-                                                                return modules.vacacional === 'full' || modules.admin === 'full';
-                                                            }
-                                                            if (type.id === 'tiquetes') {
-                                                                return modules.corporativo === 'full' || modules.admin === 'full';
-                                                            }
-                                                            return true;
-                                                        })
-                                                        .map(type => (
-                                                            <button
-                                                                key={type.id}
-                                                                onClick={() => {
-                                                                    setActiveMainTab('cotizaciones');
-                                                                    setActiveSubTab(type.id);
-                                                                    setIsEditing(false);
-                                                                }}
-                                                                className={`w-full flex items-center gap-3 p-2 rounded-lg text-sm transition-all ${activeMainTab === 'cotizaciones' && activeSubTab === type.id
-                                                                    ? 'bg-blue-500 text-white font-bold shadow-md shadow-blue-900/20'
-                                                                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                                                                    }`}
-                                                            >
-                                                                <type.icon className="w-4 h-4" />
-                                                                {type.label}
-                                                            </button>
-                                                        ))}
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-
-                                {/* PESTAÑA AYUDA - ACCESO DIRECTO */}
-                                {userRole !== 'admin' && (
-                                    <button
-                                        onClick={() => {
-                                            setActiveMainTab('ayuda');
-                                            setActiveSubTab(null);
-                                        }}
-                                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${activeMainTab === 'ayuda'
-                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20 font-bold'
-                                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                            }`}
-                                    >
-                                        <Book className={`w-5 h-5 ${activeMainTab === 'ayuda' ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'}`} />
-                                        <div className="text-left">
-                                            <span className="block font-medium">Manual & Ayuda</span>
-                                            <span className={`text-[10px] ${activeMainTab === 'ayuda' ? 'text-blue-200' : 'text-slate-600'}`}>Recursos y soporte</span>
-                                        </div>
-                                    </button>
-                                )}
-
-                                {/* RESTO DE PESTAÑAS (Filtradas por Rol) */}
-                                {mainTabs
-                                    .filter(item => {
-                                        const modules = user?.modules || {};
-                                        if (item.id === 'payments' || item.id === 'billing') return modules.contabilidad === 'full' || modules.admin === 'full';
-                                        if (item.id === 'settings' || item.id === 'history') return true;
-                                        if (item.id === 'confirmation' || item.id === 'reconfirm' || item.id === 'voucher') {
-                                            return modules.vacacional === 'full' || modules.corporativo === 'full' || modules.admin === 'full';
-                                        }
-                                        return true;
-                                    })
-                                    .map(item => {
-                                        // Lógica de acceso al Voucher
-                                        const currentRole = user?.role || userRole;
-                                        const isPrivileged = ['manager', 'accounting', 'admin'].includes(currentRole);
-                                        const isVoucher = item.id === 'voucher';
-
-                                        // El voucher se bloquea solo si es asesor (no privilegiado) y no ha completado facturación
-                                        const blocked = isVoucher && !isPrivileged && !validateBilling();
-
-                                        return (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => {
-                                                    if (blocked) {
-                                                        setShowBillingErrors(true);
-                                                        return;
-                                                    }
-                                                    setActiveMainTab(item.id);
-                                                    setActiveSubTab(null);
-                                                }}
-                                                title={blocked ? 'Atención: Completa “Tarifa Neta / Comisionable” antes de continuar' : ''}
-                                                disabled={blocked}
-                                                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all group ${activeMainTab === item.id
-                                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20 font-bold'
-                                                    : blocked
-                                                        ? 'text-slate-600 cursor-not-allowed bg-slate-800/40'
-                                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                                    }`}
-                                            >
-                                                <item.icon className={`w-5 h-5 ${activeMainTab === item.id ? 'text-white' : 'text-slate-500 group-hover:text-white'}`} />
-                                                <div className="text-left">
-                                                    <span className="block font-medium">{item.label}</span>
-                                                    <span className={`text-[10px] ${activeMainTab === item.id ? 'text-blue-200' : 'text-slate-600'}`}>{item.desc}</span>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                            </nav>
-
-                            <div className="p-4 border-t border-slate-700/60 bg-[#1e293b]/50 backdrop-blur-sm mt-auto">
-                                <button
-                                    onClick={() => { window.location.href = '/intranet'; }}
-                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-100 text-[10px] font-bold uppercase tracking-[0.18em] border border-slate-700 hover:border-slate-500 shadow-lg shadow-slate-900/40"
-                                >
-                                    <X className="w-4 h-4 text-red-400" />
-                                    Salir a Módulos
-                                </button>
-                            </div>
+                        <div className="p-4 border-t border-slate-700/60 bg-[#1e293b]/50 backdrop-blur-sm mt-auto">
+                            <button
+                                onClick={() => { window.location.href = '/intranet'; }}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-100 text-[10px] font-bold uppercase tracking-[0.18em] border border-slate-700 hover:border-slate-500 shadow-lg shadow-slate-900/40"
+                            >
+                                <X className="w-4 h-4 text-red-400" />
+                                Salir a Módulos
+                            </button>
+                        </div>
 
 
-                        </aside>
-                    )}
+                    </aside>
 
                     {/* MAIN CONTENT (Flex-1 fluid width) */}
                     <main className="flex-1 overflow-y-auto bg-[#0f172a] relative">
@@ -3943,14 +3935,12 @@ const QuotesPage = () => {
 
                         <div className="relative z-10 p-4 md:p-8 min-h-full">
                             {/* Mobile Header */}
-                            {userRole !== 'admin' && (
-                                <div className="md:hidden flex items-center justify-between mb-6">
-                                    <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-slate-800 rounded-lg text-white">
-                                        <Menu className="w-6 h-6" />
-                                    </button>
-                                    <img src="/logo-destinos.png" alt="Destinos P&P" className="h-8 w-auto" />
-                                </div>
-                            )}
+                            <div className="md:hidden flex items-center justify-between mb-6">
+                                <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-slate-800 rounded-lg text-white">
+                                    <Menu className="w-6 h-6" />
+                                </button>
+                                <img src="/logo-destinos.png" alt="Destinos P&P" className="h-8 w-auto" />
+                            </div>
                             {/* VISTA COTIZACIONES */}
                             {activeMainTab === 'ayuda' && (
                                 <HelpSection
@@ -3986,8 +3976,11 @@ const QuotesPage = () => {
                                     {/* Muestra el formulario de Cotización Inteligente (Vacacional/Corporativo) */}
                                     {activeSubTab ? (
                                         <div className="lg:col-span-12">
-                                            {userRole === 'admin' && !isEditing ? (
-                                                <SupervisionLockScreen />
+                                            {user?.role === 'accounting' ? (
+                                                <SupervisionLockScreen
+                                                    title="Acceso Denegado"
+                                                    message="Su perfil de Contabilidad no tiene permisos para crear cotizaciones. Esta función está reservada para asesores y gerencia."
+                                                />
                                             ) : (
                                                 !['crucero', 'tiquetes'].includes(activeSubTab) ? (
                                                     <SmartQuoteForm config={adminConfig} />
@@ -4001,8 +3994,11 @@ const QuotesPage = () => {
                                     ) : (
                                         // DASHBOARD DE SELECCIÓN (NUEVO)
                                         <div className="lg:col-span-12">
-                                            {userRole === 'admin' ? (
-                                                <SupervisionLockScreen />
+                                            {user?.role === 'accounting' ? (
+                                                <SupervisionLockScreen
+                                                    title="Acceso Denegado"
+                                                    message="Su perfil de Contabilidad no tiene permisos para crear cotizaciones. Esta función está reservada para asesores y gerencia."
+                                                />
                                             ) : (
                                                 <QuoteSelectionDashboard />
                                             )}
