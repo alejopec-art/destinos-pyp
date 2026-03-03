@@ -178,7 +178,7 @@ const TeamMonitor = ({ advisors, embedded = false, direction = 'up' }) => {
     };
 
     return (
-        <div className={`${embedded ? 'w-full relative' : 'fixed bottom-6 right-6 z-50'} animate-fade-in flex flex-col ${embedded ? 'items-start' : 'items-end'} gap-4`}>
+        <div className={`${embedded ? 'w-full relative z-50' : 'fixed bottom-6 right-6 z-50'} animate-fade-in flex flex-col ${embedded ? 'items-start' : 'items-end'} gap-4`}>
             
             {/* Tarjeta de Detalle (Popover) */}
             {selectedAdvisor && (

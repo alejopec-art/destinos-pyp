@@ -44,16 +44,19 @@ const Dashboard = () => {
         <div className="min-h-screen bg-[#0f172a] font-sans selection:bg-blue-500 selection:text-white relative pb-10">
 
             {/* Floating Logout Button */}
-            <Link to="/" className="fixed top-8 right-8 z-50">
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-3 rounded-full shadow-lg border border-white/10 text-white font-bold hover:bg-white/20 hover:shadow-xl transition-all group"
-                >
-                    <span className="group-hover:text-red-400 transition-colors">Cerrar Sesión</span>
-                    <LogOut className="w-5 h-5 text-gray-400 group-hover:text-red-400 transition-colors" />
-                </motion.button>
-            </Link>
+            <div className="fixed bottom-8 left-8 z-50 flex flex-col gap-4 w-64">
+                <TeamMonitor embedded={true} fullWidth={true} />
+                <Link to="/">
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full flex items-center justify-center gap-3 p-3.5 rounded-xl bg-slate-900/80 backdrop-blur-md text-slate-400 hover:text-white hover:bg-red-500/10 transition-all text-[10px] font-bold uppercase tracking-widest group border border-slate-800 hover:border-red-500/30 shadow-lg shadow-black/20"
+                    >
+                        <LogOut className="w-4 h-4 text-red-400" />
+                        <span className="group-hover:text-red-400 transition-colors">Cerrar Sesión</span>
+                    </motion.button>
+                </Link>
+            </div>
 
             <div className="container mx-auto px-6 pt-20">
                 <div className="mb-10 text-center max-w-2xl mx-auto">
@@ -86,9 +89,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                <div className="max-w-sm mb-8">
-                    <TeamMonitor embedded={true} />
-                </div>
+
 
                 {/* Widgets Informativos - Estilo Glass Neon */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 max-w-7xl mx-auto">

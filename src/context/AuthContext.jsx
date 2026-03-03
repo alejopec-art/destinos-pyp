@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 
-const RBAC_MATRIX = {
+export const RBAC_MATRIX = {
     'viajes@destinospp.com': {
         role: 'manager',
         name: 'Luisa Paola Caicedo',
@@ -67,6 +67,30 @@ const RBAC_MATRIX = {
     }
 };
 
+const ROLE_MODULES = {
+    'manager': {
+        dashboard: 'read',
+        admin: 'full',
+        vacacional: 'full',
+        corporativo: 'full',
+        contabilidad: 'read'
+    },
+    'accounting': {
+        dashboard: 'read',
+        contabilidad: 'full'
+    },
+    'advisor_corporate': {
+        dashboard: 'read',
+        vacacional: 'full',
+        corporativo: 'full'
+    },
+    'operations_vac': {
+        dashboard: 'read',
+        vacacional: 'full',
+        corporativo: 'full'
+    }
+};
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -90,11 +114,8 @@ export const AuthProvider = ({ children }) => {
                     };
                     setUser(refreshedUser);
                     localStorage.setItem('intranet_user', JSON.stringify(refreshedUser));
-                } else {
-                    setUser(parsed);
-                }
-
-                if (supabase) {
+                } else if (supabase) {
+                    // Si no está en la matriz fija, refrescar desde la DB
                     supabase
                         .from('profiles')
                         .select('*')
@@ -102,14 +123,17 @@ export const AuthProvider = ({ children }) => {
                         .single()
                         .then(({ data }) => {
                             if (data) {
-                                // Re-merge with DB but keep RBAC modules as source of truth for logic
-                                setUser(prev => {
-                                    const merged = { ...prev, ...data, modules: currentConfig?.modules || prev.modules };
-                                    localStorage.setItem('intranet_user', JSON.stringify(merged));
-                                    return merged;
-                                });
+                                const refreshedUser = {
+                                    ...parsed,
+                                    ...data,
+                                    modules: ROLE_MODULES[data.role] || ROLE_MODULES['advisor_corporate']
+                                };
+                                setUser(refreshedUser);
+                                localStorage.setItem('intranet_user', JSON.stringify(refreshedUser));
                             }
                         });
+                } else {
+                    setUser(parsed);
                 }
             } catch {
                 localStorage.removeItem('intranet_user');
@@ -126,29 +150,35 @@ export const AuthProvider = ({ children }) => {
         if (normalized === 'admin@destinospp.com') {
             throw new Error('Acceso denegado');
         }
-        const config = RBAC_MATRIX[normalized];
-        if (!config) {
-            throw new Error('Acceso denegado');
-        }
 
-        let dbProfile = {};
+        let dbProfile = null;
         if (supabase) {
             const { data } = await supabase.from('profiles').select('*').eq('email', normalized).single();
             if (data) dbProfile = data;
         }
 
+        const config = RBAC_MATRIX[normalized];
+
+        // Si no está en la matriz ni en la DB, denegar
+        if (!config && !dbProfile) {
+            throw new Error('Acceso denegado: Usuario no registrado');
+        }
+
+        const userRole = dbProfile?.role || config?.role || 'advisor_corporate';
+        const modules = dbProfile?.role ? ROLE_MODULES[dbProfile.role] : config?.modules;
+
         const nextUser = {
             email: normalized,
-            role: config.role,
-            full_name: dbProfile.full_name || config.name,
-            professional_role: dbProfile.professional_role || config.role_label,
-            modules: config.modules,
-            phone: dbProfile.phone || '',
-            city: dbProfile.city || '',
-            address: dbProfile.address || '',
-            birth_date: dbProfile.birth_date || '',
-            language: dbProfile.language || 'Español',
-            photo_url: dbProfile.photo_url || ''
+            role: userRole,
+            full_name: dbProfile?.full_name || config?.name || 'Usuario',
+            professional_role: dbProfile?.professional_role || config?.role_label || 'Asesor Comercial',
+            modules: modules || ROLE_MODULES['advisor_corporate'],
+            phone: dbProfile?.phone || '',
+            city: dbProfile?.city || '',
+            address: dbProfile?.address || '',
+            birth_date: dbProfile?.birth_date || '',
+            language: dbProfile?.language || 'Español',
+            photo_url: dbProfile?.photo_url || ''
         };
         setUser(nextUser);
         localStorage.setItem('intranet_user', JSON.stringify(nextUser));

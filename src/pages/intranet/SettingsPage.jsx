@@ -1,9 +1,67 @@
-import React, { useState } from 'react';
-import { UserCog, Lock, Shield, FileText, Upload, RefreshCw, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserCog, Lock, Shield, FileText, Upload, RefreshCw, Save, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
+import { UsersApi } from '../../services/usersApi';
+import { processImageUpload } from '../../utils/image';
 
 const SettingsPage = () => {
+    const { user, setUser } = useAuth();
     const [activeTab, setActiveTab] = useState('profile'); // profile | consecutives | users
+
+    // Estado del Perfil
+    const [profileData, setProfileData] = useState({
+        full_name: '',
+        professional_role: '',
+        photo_url: '',
+        password: '' // (Simulado para UI)
+    });
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        if (user) {
+            setProfileData({
+                full_name: user.full_name || '',
+                professional_role: user.professional_role || '',
+                photo_url: user.photo_url || ''
+            });
+        }
+    }, [user]);
+
+    const handlePhotoChange = async (e) => {
+        // Usa la misma lógica de Hostinger configurada en processImageUpload
+        const base64Image = await processImageUpload(e, { maxWidth: 400, maxHeight: 400 });
+        if (base64Image) {
+            setProfileData(prev => ({ ...prev, photo_url: base64Image }));
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        if (!user?.email) return;
+        setIsSaving(true);
+        try {
+            const updates = {
+                full_name: profileData.full_name,
+                professional_role: profileData.professional_role,
+                photo_url: profileData.photo_url
+            };
+            const res = await UsersApi.updateUser(user.email, updates);
+            if (res.ok || res.local) {
+                // Actualizar contexto global
+                setUser({ ...user, ...updates });
+                setSaveSuccess(true);
+                setTimeout(() => setSaveSuccess(false), 3000);
+            } else {
+                alert('Error al actualizar: ' + res.error);
+            }
+        } catch (error) {
+            alert('Error inesperado: ' + error.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     return (
         <div className="max-w-6xl mx-auto min-h-screen pb-20">
@@ -22,42 +80,67 @@ const SettingsPage = () => {
             {/* TAB: MI PERFIL */}
             {activeTab === 'profile' && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="col-span-1 bg-[#1e293b] border border-slate-700/50 rounded-2xl p-8 text-center">
-                        <div className="w-32 h-32 mx-auto bg-gradient-to-br from-pink-500 to-purple-600 rounded-full flex items-center justify-center text-4xl font-bold text-white mb-4 shadow-lg shadow-purple-900/50 border-4 border-slate-800">
-                            AM
+                    <div className="col-span-1 bg-[#1e293b] border border-slate-700/50 rounded-2xl p-8 text-center flex flex-col items-center">
+                        <div className="relative mb-4">
+                            {profileData.photo_url ? (
+                                <img src={profileData.photo_url} alt="Profile" className="w-32 h-32 rounded-full object-cover shadow-lg shadow-purple-900/50 border-4 border-slate-800" />
+                            ) : (
+                                <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-4xl font-bold text-white shadow-lg shadow-purple-900/50 border-4 border-slate-800">
+                                    {(profileData.full_name || 'U').charAt(0)}
+                                </div>
+                            )}
                         </div>
-                        <h2 className="text-xl font-bold text-white mb-1">Ana María</h2>
-                        <p className="text-slate-400 text-sm mb-6">Asesor Senior</p>
-                        <button className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold border border-slate-600 flex items-center justify-center gap-2">
-                            <Upload className="w-4 h-4" /> Cambiar Foto
+                        <input
+                            type="text"
+                            value={profileData.full_name}
+                            onChange={(e) => setProfileData(prev => ({ ...prev, full_name: e.target.value }))}
+                            className="bg-transparent text-xl font-bold text-white text-center mb-1 outline-none border-b border-transparent focus:border-blue-500 transition-colors"
+                            placeholder="Tu Nombre"
+                        />
+                        <input
+                            type="text"
+                            value={profileData.professional_role}
+                            onChange={(e) => setProfileData(prev => ({ ...prev, professional_role: e.target.value }))}
+                            className="bg-transparent text-sm text-slate-400 text-center mb-6 outline-none border-b border-transparent focus:border-blue-500 transition-colors"
+                            placeholder="Tu Cargo (Ej: Asesor Senior)"
+                        />
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={handlePhotoChange}
+                        />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold border border-slate-600 flex items-center justify-center gap-2 transition-colors"
+                        >
+                            <Upload className="w-4 h-4" /> Cambiar Avatar (Hostinger)
                         </button>
                     </div>
                     <div className="col-span-1 md:col-span-2 bg-[#1e293b] border border-slate-700/50 rounded-2xl p-8">
-                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><FileText className="w-5 h-5 text-blue-400" /> Firma Digital</h3>
-                        <div className="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer bg-slate-800/30">
-                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                            <p className="text-slate-300 font-medium">Sube tu firma escaneada (PNG transparente)</p>
-                            <p className="text-xs text-slate-500 mt-1">Esta firma aparecerá automáticamente en tus cotizaciones PDF.</p>
-                        </div>
-                        <div className="mt-8">
-                            <h3 className="text-lg font-bold text-white mb-4">Metas Personales</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-slate-400 text-xs uppercase font-bold mb-2">Meta de Ventas Mensual (COP)</label>
-                                    <input type="text" defaultValue="$ 50.000.000" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none font-mono" />
-                                </div>
-                                <div>
-                                    <label className="block text-slate-400 text-xs uppercase font-bold mb-2">Notificaciones</label>
-                                    <div className="flex items-center gap-2 mt-3">
-                                        <input type="checkbox" defaultChecked className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-blue-600 focus:ring-blue-500" />
-                                        <span className="text-slate-300 text-sm">Alertas de Vencimiento</span>
-                                    </div>
-                                </div>
+                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><Lock className="w-5 h-5 text-blue-400" /> Seguridad y Credenciales</h3>
+
+                        <div className="space-y-4 mb-8">
+                            <div>
+                                <label className="block text-slate-400 text-xs uppercase font-bold mb-2">Correo Corporativo</label>
+                                <input type="email" readOnly value={user?.email || ''} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 text-slate-500 outline-none cursor-not-allowed" />
+                            </div>
+                            <div>
+                                <label className="block text-slate-400 text-xs uppercase font-bold mb-2">Cambiar Contraseña</label>
+                                <input type="password" placeholder="Escribe para cambiar (Opcional)" className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none" />
                             </div>
                         </div>
-                        <div className="mt-8 flex justify-end">
-                            <button className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-900/20">
-                                <Save className="w-5 h-5" /> Guardar Cambios
+
+                        <div className="mt-8 flex justify-end items-center gap-4">
+                            {saveSuccess && <span className="text-emerald-400 text-sm font-bold flex items-center gap-1"><CheckCircle className="w-4 h-4" /> ¡Guardado con éxito!</span>}
+                            <button
+                                onClick={handleSaveProfile}
+                                disabled={isSaving}
+                                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-900/20 transition-all"
+                            >
+                                {isSaving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                                {isSaving ? 'Guardando...' : 'Guardar Perfil'}
                             </button>
                         </div>
                     </div>
