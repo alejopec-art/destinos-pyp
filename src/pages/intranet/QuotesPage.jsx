@@ -1228,12 +1228,50 @@ const QuotesPage = () => {
         const [firstDeposit, setFirstDeposit] = useState('');
         const [secondDeposit, setSecondDeposit] = useState('');
         const [secondDepositDate, setSecondDepositDate] = useState('');
+        const [currencyC, setCurrencyC] = useState('USD');
         const [dueDate, setDueDate] = useState('');
         const [hotelCategory, setHotelCategory] = useState('');
         const [clientNameC, setClientNameC] = useState('');
         const [clientEmailC, setClientEmailC] = useState('');
         const [destinationC, setDestinationC] = useState('');
         const [clientPhoneC, setClientPhoneC] = useState('');
+        const [clientSuggestions, setClientSuggestions] = useState([]);
+        const [showSuggestions, setShowSuggestions] = useState(false);
+
+        const formatCOP = (val) => {
+            if (!val) return '';
+            const num = String(val).replace(/\D/g, '');
+            return new Intl.NumberFormat('es-CO').format(num);
+        };
+
+        const handleSearchClients = async (term) => {
+            setClientNameC(term.toUpperCase());
+            if (!term || term.length < 3) {
+                setClientSuggestions([]);
+                setShowSuggestions(false);
+                return;
+            }
+            try {
+                const { data } = await QuotesApi.listQuotes(term);
+                const uniqueClients = [];
+                const seen = new Set();
+                data.forEach(q => {
+                    const name = (q.data?.clientName || q.data?.company || '').toUpperCase();
+                    if (name && !seen.has(name)) {
+                        seen.add(name);
+                        uniqueClients.push({
+                            name,
+                            email: q.data?.clientEmail || '',
+                            phone: q.data?.clientPhone || ''
+                        });
+                    }
+                });
+                setClientSuggestions(uniqueClients.slice(0, 5));
+                setShowSuggestions(uniqueClients.length > 0);
+            } catch (err) {
+                console.error(err);
+            }
+        };
         const [dateStartC, setDateStartC] = useState('');
         const [dateEndC, setDateEndC] = useState('');
         const [hotelNameC, setHotelNameC] = useState('');
@@ -1291,7 +1329,11 @@ const QuotesPage = () => {
             const init = async () => {
                 setFolioInput(previewFolio || '');
                 if (previewFolio) {
-                    const loaded = await QuotesApi.getQuoteByFolio(previewFolio);
+                    // Try to load from localStorage draft first
+                    const draft = localStorage.getItem(`confirmation_draft_${previewFolio}`);
+                    const dbData = await QuotesApi.getQuoteByFolio(previewFolio);
+                    const loaded = draft ? JSON.parse(draft) : dbData;
+
                     if (loaded) {
                         if (loaded.serviceConfirmed !== undefined) setServiceConfirmed(!!loaded.serviceConfirmed);
                         if (loaded.serviceType) setServiceType(loaded.serviceType);
@@ -1301,6 +1343,7 @@ const QuotesPage = () => {
                         if (loaded.firstDeposit) setFirstDeposit(String(loaded.firstDeposit));
                         if (loaded.secondDeposit) setSecondDeposit(String(loaded.secondDeposit));
                         if (loaded.secondDepositDate) setSecondDepositDate(loaded.secondDepositDate);
+                        if (loaded.currency) setCurrencyC(loaded.currency);
                         if (loaded.dueDate) setDueDate(loaded.dueDate);
                         if (loaded.hotelCategory) setHotelCategory(loaded.hotelCategory);
                         if (loaded.clientName) setClientNameC(loaded.clientName);
@@ -1317,6 +1360,19 @@ const QuotesPage = () => {
             };
             init();
         }, [previewFolio]);
+
+        // Real-time persistence
+        useEffect(() => {
+            if (!previewFolio || previewFolio.startsWith('TEMP')) return;
+            const draftData = {
+                serviceConfirmed, serviceType, planType, totalPrice, currency: currencyC,
+                depositDate, firstDeposit, secondDeposit, secondDepositDate, dueDate,
+                hotelCategory, clientName: clientNameC, clientEmail: clientEmailC, clientPhone: clientPhoneC,
+                destination: destinationC, dateStart: dateStartC, dateEnd: dateEndC, hotelName: hotelNameC,
+                flightRows, passengerRows, updatedAt: new Date().toISOString()
+            };
+            localStorage.setItem(`confirmation_draft_${previewFolio}`, JSON.stringify(draftData));
+        }, [previewFolio, serviceConfirmed, serviceType, planType, totalPrice, currencyC, depositDate, firstDeposit, secondDeposit, secondDepositDate, dueDate, hotelCategory, clientNameC, clientEmailC, clientPhoneC, destinationC, dateStartC, dateEndC, hotelNameC, flightRows, passengerRows]);
         const handleLoadByFolio = async () => {
             const folio = (folioInput || '').trim();
             if (!folio) return;
@@ -1330,6 +1386,7 @@ const QuotesPage = () => {
                 if (data.firstDeposit) setFirstDeposit(String(data.firstDeposit));
                 if (data.secondDeposit) setSecondDeposit(String(data.secondDeposit));
                 if (data.secondDepositDate) setSecondDepositDate(data.secondDepositDate);
+                if (data.currency) setCurrencyC(data.currency);
                 if (data.dueDate) setDueDate(data.dueDate);
                 if (data.hotelCategory) setHotelCategory(data.hotelCategory);
                 if (data.clientName) setClientNameC(data.clientName);
@@ -1366,6 +1423,7 @@ const QuotesPage = () => {
                     serviceType,
                     planType,
                     totalPrice,
+                    currency: currencyC,
                     depositDate,
                     firstDeposit,
                     secondDeposit,
@@ -1398,11 +1456,17 @@ const QuotesPage = () => {
                         action: 'CONFIRMACIÓN',
                         timestamp: new Date().toISOString(),
                         user: advisorName,
-                        details: 'Paso 2 Completado: Cliente aceptó propuesta y se registraron pasajeros.'
+                        details: `Paso 2 Completado: Confirmación en ${currencyC}. Cliente: ${clientNameC}`
                     });
 
                     // Actualizar quote con el historial
                     await QuotesApi.updateQuote(folio, { ...payload, history: historyLog, status: 'confirmed' });
+
+                    // Generar PDF con los datos más recientes
+                    generateConfirmationPdf(payload);
+
+                    // Clear draft on successful save
+                    localStorage.removeItem(`confirmation_draft_${folio}`);
 
                     setAuditLogs(prev => [{
                         date: new Date().toISOString(),
@@ -1510,9 +1574,24 @@ const QuotesPage = () => {
                         <div className="md:col-span-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                             <div className="grid grid-cols-2 gap-3">
                                 <input value={planType} onChange={e => setPlanType(e.target.value)} placeholder="Tipo de Plan" className={`bg-slate-50 border rounded-xl p-3 text-slate-700 font-bold uppercase outline-none col-span-2 ${showConfirmErrors && !planType ? 'border-red-400' : 'border-slate-200'}`} />
-                                <div className={`bg-slate-50 border rounded-xl p-3 ${showConfirmErrors && !totalPrice ? 'border-red-400' : 'border-slate-200'}`}>
-                                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Precio Total (USD)</div>
-                                    <input value={totalPrice} onChange={e => setTotalPrice(e.target.value)} placeholder="0.00" className="w-full bg-transparent font-black text-xl text-slate-800 outline-none" />
+                                <div className={`bg-slate-50 border rounded-xl p-3 ${showConfirmErrors && !totalPrice ? 'border-red-400' : 'border-slate-200'} relative`}>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <div className="text-[10px] text-slate-400 uppercase font-bold">Precio Total ({currencyC})</div>
+                                        <div className="flex bg-slate-200 rounded-lg p-0.5">
+                                            <button onClick={() => setCurrencyC('USD')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${currencyC === 'USD' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>USD</button>
+                                            <button onClick={() => setCurrencyC('COP')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${currencyC === 'COP' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>COP</button>
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={currencyC === 'COP' ? formatCOP(totalPrice) : totalPrice}
+                                        onChange={e => {
+                                            const raw = e.target.value.replace(/\D/g, '');
+                                            setTotalPrice(currencyC === 'COP' ? raw : e.target.value);
+                                        }}
+                                        placeholder="0.00"
+                                        className="w-full bg-transparent font-black text-xl text-slate-800 outline-none"
+                                    />
                                 </div>
                                 <div className={`${dueDate && new Date(dueDate) < new Date() ? 'ring-2 ring-red-400 rounded-xl' : ''}`}>
                                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
@@ -1534,7 +1613,34 @@ const QuotesPage = () => {
                                 </div>
                                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Datos del Solicitante</span>
                             </div>
-                            <input type="text" className="w-full bg-slate-50/50 outline-none font-bold text-slate-700 uppercase mb-3 text-sm border-b border-slate-200 focus:border-blue-300 pb-1" value={clientNameC} onChange={e => setClientNameC(e.target.value.toUpperCase())} placeholder="NOMBRE COMPLETO DEL CLIENTE" />
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-50/50 outline-none font-bold text-slate-700 uppercase mb-1 text-sm border-b border-slate-200 focus:border-blue-300 pb-1"
+                                    value={clientNameC}
+                                    onChange={e => handleSearchClients(e.target.value)}
+                                    placeholder="NOMBRE COMPLETO DEL CLIENTE"
+                                />
+                                {showSuggestions && (
+                                    <div className="absolute z-[60] left-0 right-0 top-full bg-white border border-slate-200 shadow-xl rounded-xl mt-1 overflow-hidden">
+                                        {clientSuggestions.map((s, i) => (
+                                            <button
+                                                key={i}
+                                                className="w-full text-left px-4 py-2 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors"
+                                                onClick={() => {
+                                                    setClientNameC(s.name);
+                                                    setClientEmailC(s.email);
+                                                    setClientPhoneC(s.phone);
+                                                    setShowSuggestions(false);
+                                                }}
+                                            >
+                                                <p className="font-bold text-xs text-slate-700">{s.name}</p>
+                                                {s.email && <p className="text-[10px] text-slate-400">{s.email}</p>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <div className="grid grid-cols-1 gap-3">
                                 <input type="email" className="w-full bg-slate-50/50 outline-none text-xs text-slate-600 lowercase placeholder-slate-400 border-b border-slate-200 focus:border-blue-300 pb-1" value={clientEmailC} onChange={e => setClientEmailC(e.target.value)} placeholder="Correo electrónico" />
                                 <input type="tel" className="w-full bg-slate-50/50 outline-none text-xs text-slate-600 placeholder-slate-400 border-b border-slate-200 focus:border-blue-300 pb-1" value={clientPhoneC || ''} onChange={e => setClientPhoneC(e.target.value)} placeholder="Celular de contacto" />

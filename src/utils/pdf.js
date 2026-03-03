@@ -1270,7 +1270,12 @@ export async function generateUniversalPdf(type, opts) {
         const date2 = opts.secondDepositDate ? opts.secondDepositDate : '—';
         const dateL = opts.dueDate ? opts.dueDate : '—';
 
-        const fmtPrice = (v) => `$${v.toFixed(2)} ${curr}`;
+        const fmtPrice = (v) => {
+          if (curr === 'COP') {
+            return `$ ${Math.round(v).toLocaleString('es-CO')}`;
+          }
+          return `$ ${parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} ${curr}`;
+        };
 
         autoTable(doc, {
           startY: y,
