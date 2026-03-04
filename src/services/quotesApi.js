@@ -165,8 +165,8 @@ export const QuotesApi = {
 
       if (search && search.trim()) {
         const term = `%${sanitize(search.trim())}%`;
-        // Búsqueda Universal: Folio, Cliente, Cédula/Pasaporte, Destino
-        query = query.or(`folio.ilike.${term},data->>clientName.ilike.${term},data->>clientDoc.ilike.${term},data->>destination.ilike.${term}`);
+        // Búsqueda Universal: Folio, Cliente, Cédula/Pasaporte, NIT, Destino
+        query = query.or(`folio.ilike.${term},data->>clientName.ilike.${term},data->>clientDoc.ilike.${term},data->>clientNit.ilike.${term},data->>destination.ilike.${term}`);
       }
 
       // Aplicar rango después de filtros

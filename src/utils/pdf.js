@@ -69,6 +69,7 @@ export async function generateUniversalPdf(type, opts) {
       notes = '',
       flights = [],
       flightRows = [],
+      serviceRows = [],
       luggage = { personal: true, hand: true, checked: false },
       corporateBrand,
       totalInvestment,
@@ -367,10 +368,84 @@ export async function generateUniversalPdf(type, opts) {
       return yPos + 25;
     };
 
-    // --- Services Tables ---
+    // --- Services Tables & Specific Flows ---
+    const fmtPrice = (v) => {
+      if (currency === 'COP') return `$ ${Math.round(v).toLocaleString('es-CO')}`;
+      return `$ ${parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
+    };
 
-    // 1. Flight Options (Multi-Option Mode)
-    if (hasFlightOptions) {
+    // --- A. CONFIRMATION / VOUCHER SPECIFIC FLOW (Top) ---
+    if (type === 'CONFIRMATION' || type === 'VOUCHER') {
+      // 1. LISTA DE PASAJEROS
+      if (opts.passengerRows && opts.passengerRows.length > 0) {
+        if (y + 100 > pageHeight - footerBarHeight) { doc.addPage(); y = 60; }
+        y = addSectionTitle('Información de Pasajeros y Alojamiento', y);
+
+        autoTable(doc, {
+          startY: y,
+          head: [['No.', 'Nombres', 'Documento', 'Nacimiento', 'Acomodación']],
+          body: opts.passengerRows.map((p, i) => [
+            i + 1,
+            p.fullName || '—',
+            p.docId || '—',
+            p.birthDate || '—',
+            p.accommodation || '—'
+          ]),
+          headStyles: { fillColor: [30, 41, 59], textColor: COLORS.white, fontStyle: 'bold', fontSize: 9, halign: 'center' },
+          bodyStyles: { textColor: COLORS.text, fontSize: 8 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          margin: { left: margin, right: margin },
+          theme: 'grid',
+          columnStyles: {
+            0: { halign: 'center', cellWidth: 25 },
+            2: { halign: 'center', cellWidth: 80 },
+            3: { halign: 'center', cellWidth: 70 }
+          }
+        });
+        y = doc.lastAutoTable.finalY + 20;
+
+        if (opts.hotelName) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(30, 41, 59);
+          doc.text(`Alojamiento en: ${opts.hotelName.toUpperCase()}`, margin, y);
+
+          const planText = opts.mealPlan === 'OTRO' ? (opts.otherMealPlan || 'OTRO') : (opts.mealPlan || 'TODO INCLUIDO');
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...COLORS.primary);
+          doc.text(`PLAN: ${planText.toUpperCase()}`, pageWidth - margin, y, { align: 'right' });
+
+          y += 15;
+        }
+      }
+
+      // 2. SERVICIOS EN DESTINO (TRASLADOS / TOURS)
+      const allServices = serviceRows || [];
+      if (allServices.length > 0) {
+        y = addSectionTitle('Servicios en Destino', y);
+
+        autoTable(doc, {
+          startY: y,
+          head: [['SERVICIO', 'OPERADOR / CONTACTO', 'FECHA Y HORA', 'PUNTO DE ENCUENTRO']],
+          body: allServices.map(s => [
+            `${s.type?.toUpperCase() || 'SERVICIO'}\n${s.description || '—'}`,
+            s.operator?.toUpperCase() || '—',
+            s.dateTime ? new Date(s.dateTime).toLocaleString() : '—',
+            s.meetingPoint?.toUpperCase() || '—'
+          ]),
+          headStyles: { fillColor: [16, 185, 129], textColor: COLORS.white, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { textColor: COLORS.text, fontSize: 8, cellPadding: 8 },
+          alternateRowStyles: { fillColor: [240, 253, 244] },
+          margin: { left: margin, right: margin },
+          theme: 'grid'
+        });
+        y = doc.lastAutoTable.finalY + 20;
+      }
+    }
+
+    // 1. Flight Options (Multi-Option Mode) or Global Flights
+    if (hasFlightOptions && type === 'QUOTE') {
       y = addSectionTitle('Opciones de Vuelo', y);
 
       for (const option of opts.flightOptions) {
@@ -410,13 +485,14 @@ export async function generateUniversalPdf(type, opts) {
         if (option.flights && option.flights.length > 0) {
           autoTable(doc, {
             startY: y,
-            head: [['Información de Vuelo', 'Ruta', 'Fecha y Hora']],
+            head: [['Aerolínea', 'Vuelo', 'Ruta', 'Salida (F/H)', 'Llegada (F/H)']],
             body: option.flights.map(f => {
-              const flightInfo = f.airline === f.flight ? (f.airline || '—') : `${f.airline || ''} ${f.flight || ''}`.trim();
               return [
-                flightInfo,
+                f.airline || '—',
+                f.flight || '—',
                 f.route || '—',
-                f.flightDate || '—'
+                f.flightDate || '—',
+                f.arrDate || '—'
               ];
             }),
             headStyles: { fillColor: COLORS.secondary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 9 },
@@ -448,7 +524,6 @@ export async function generateUniversalPdf(type, opts) {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
           let pY = y + 40;
-          const fmtPrice = (v) => `${currency} $ ${parseFloat(v || 0).toLocaleString('es-CO', { minimumFractionDigits: 2 })}`;
 
           const pAdultAfil = parseInt(adultsAffiliate) || 0;
           const pAdultNoAfil = parseInt(adultsNonAffiliate) || 0;
@@ -495,24 +570,22 @@ export async function generateUniversalPdf(type, opts) {
         }
       }
       y += 10;
-    }
-    else {
-      // Solo mostrar Itinerario Aéreo GLOBAL si NO es una cotización (es Confirmación/Voucher)
-      // En cotizaciones, ahora irá dentro de cada opción.
+    } else {
+      // Itinerario Aéreo GLOBAL (Para Confirmaciones, Vouchers o Cotizaciones Estándar)
       const allFlights = [...(flights || []), ...(flightRows || [])];
-      if (allFlights.length > 0 && type !== 'QUOTE') {
+      if (allFlights.length > 0) {
         y = addSectionTitle('Itinerario Aéreo', y);
 
-        const isConfirmation = type === 'CONFIRMATION' || type === 'VOUCHER';
+        const isFormal = type === 'CONFIRMATION' || type === 'VOUCHER';
 
-        if (isConfirmation) {
+        if (isFormal) {
           autoTable(doc, {
             startY: y,
             head: [['IDENTIFICACIÓN', 'PASAJERO', 'ITINERARIO', 'OBSERVACIONES']],
             body: allFlights.map(f => [
               `${f.airline || '—'}\nTK: ${f.eticket || '—'}\nPNR: ${f.pnr || '—'}`,
-              `${f.passengerName || '—'}\nDOC: ${f.passengerId || '—'}`,
-              `${f.route || '—'}\nFECHA: ${f.flightDate || '—'}\nHORA: ${f.depTime || '—'} > ${f.arrTime || '—'}`,
+              `${f.passenger || f.passengerName || '—'}\nDOC: ${f.pid || f.passengerId || '—'}`,
+              `${f.route || '—'}\nSALIDA: ${f.flightDate || '—'}\nLLEGADA: ${f.arrDate || '—'}`,
               f.observaciones || '—'
             ]),
             headStyles: { fillColor: [30, 64, 175], textColor: COLORS.white, fontStyle: 'bold', fontSize: 9 },
@@ -524,14 +597,13 @@ export async function generateUniversalPdf(type, opts) {
         } else {
           autoTable(doc, {
             startY: y,
-            head: [['Aerolínea', 'Vuelo', 'Ruta', 'Fecha', 'Salida', 'Llegada', 'Observaciones']],
+            head: [['Aerolínea', 'Vuelo', 'Ruta', 'Salida (F/H)', 'Llegada (F/H)', 'Observaciones']],
             body: allFlights.map(f => [
               f.airline || '—',
               f.flight || '—',
               f.route || (f.departure ? `${f.departure} > ${f.arrival}` : '—'),
-              f.flightDate || '—',
-              f.depTime || '—',
-              f.arrTime || '—',
+              f.flightDate || (f.depTime ? f.depTime : '—'),
+              f.arrDate || (f.arrTime ? f.arrTime : '—'),
               f.observaciones || '—'
             ]),
             headStyles: { fillColor: COLORS.secondary, textColor: COLORS.white, fontStyle: 'bold', fontSize: 8 },
@@ -568,6 +640,51 @@ export async function generateUniversalPdf(type, opts) {
         } else {
           y += 15;
         }
+      }
+    }
+
+    // --- B. CONFIRMATION / VOUCHER SPECIFIC FLOW (Bottom) ---
+    if (type === 'CONFIRMATION' || type === 'VOUCHER') {
+      if (opts.totalPrice) {
+        if (y + 140 > pageHeight - footerBarHeight) { doc.addPage(); y = 60; }
+        y = addSectionTitle('Liquidación de Pagos', y);
+
+        const curr = opts.currency || 'USD';
+        const tVal = parseFloat(opts.totalPrice) || 0;
+        const deposit1 = parseFloat(opts.firstDeposit) || 0;
+        const deposit2 = parseFloat(opts.secondDeposit) || 0;
+        const balance = tVal - deposit1 - deposit2;
+
+        const date1 = opts.depositDate ? opts.depositDate : '—';
+        const date2 = opts.secondDepositDate ? opts.secondDepositDate : '—';
+        const dateL = opts.dueDate ? opts.dueDate : '—';
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Concepto', 'Fecha Pago', `Valor (${curr})`]],
+          body: [
+            ['VALOR TOTAL DEL PLAN', '—', fmtPrice(tVal)],
+            ['PRIMER ABONO (Liq. TRM del día)', date1, fmtPrice(deposit1)],
+            ['SEGUNDO ABONO (Liq. TRM del día)', date2, fmtPrice(deposit2)],
+            ['SALDO TOTAL', `Límite: ${dateL}`, fmtPrice(balance > 0 ? balance : 0)]
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [16, 185, 129], textColor: COLORS.white, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 8 },
+          columnStyles: {
+            0: { fontStyle: 'bold' },
+            1: { halign: 'center' },
+            2: { halign: 'right', fontStyle: 'bold' }
+          },
+          didParseCell: (data) => {
+            if (data.row.index === 3) {
+              data.cell.styles.fillColor = [254, 240, 138];
+              data.cell.styles.textColor = [0, 0, 0];
+            }
+          },
+          margin: { left: margin, right: margin }
+        });
+        y = doc.lastAutoTable.finalY + 25;
       }
     }
 
@@ -1216,95 +1333,7 @@ export async function generateUniversalPdf(type, opts) {
       y += docsBoxH + 15;
     }
 
-    // --- NUEVO BLOQUE: CONFIRMACIÓN - PASAJEROS Y LIQUIDACIÓN FINANCIERA ---
-    if (type === 'CONFIRMATION') {
-      // 1. LISTA DE PASAJEROS
-      if (opts.passengerRows && opts.passengerRows.length > 0) {
-        if (y + 100 > pageHeight - footerBarHeight) { doc.addPage(); y = 60; }
-        y = addSectionTitle('Información de Pasajeros y Alojamiento', y);
-
-        autoTable(doc, {
-          startY: y,
-          head: [['No.', 'Nombres', 'Documento', 'Nacimiento', 'Acomodación']],
-          body: opts.passengerRows.map((p, i) => [
-            i + 1,
-            p.fullName || '—',
-            p.docId || '—',
-            p.birthDate || '—',
-            p.accommodation || '—'
-          ]),
-          headStyles: { fillColor: [30, 41, 59], textColor: COLORS.white, fontStyle: 'bold', fontSize: 9, halign: 'center' },
-          bodyStyles: { textColor: COLORS.text, fontSize: 8 },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          margin: { left: margin, right: margin },
-          theme: 'grid',
-          columnStyles: {
-            0: { halign: 'center', cellWidth: 25 },
-            2: { halign: 'center', cellWidth: 80 },
-            3: { halign: 'center', cellWidth: 70 }
-          }
-        });
-        y = doc.lastAutoTable.finalY + 20;
-
-        if (opts.hotelName) {
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(10);
-          doc.setTextColor(30, 41, 59);
-          doc.text(`Alojamiento en: ${opts.hotelName.toUpperCase()}`, margin, y);
-          y += 15;
-        }
-      }
-
-      // 2. LIQUIDACIÓN FINANCIERA
-      if (opts.totalPrice) {
-        if (y + 140 > pageHeight - footerBarHeight) { doc.addPage(); y = 60; }
-        y = addSectionTitle('Liquidación de Pagos', y);
-
-        const curr = opts.currency || 'USD';
-        const tVal = parseFloat(opts.totalPrice) || 0;
-        const deposit1 = parseFloat(opts.firstDeposit) || 0;
-        const deposit2 = parseFloat(opts.secondDeposit) || 0;
-        const balance = tVal - deposit1 - deposit2;
-
-        const date1 = opts.depositDate ? opts.depositDate : '—';
-        const date2 = opts.secondDepositDate ? opts.secondDepositDate : '—';
-        const dateL = opts.dueDate ? opts.dueDate : '—';
-
-        const fmtPrice = (v) => {
-          if (curr === 'COP') {
-            return `$ ${Math.round(v).toLocaleString('es-CO')}`;
-          }
-          return `$ ${parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })} ${curr}`;
-        };
-
-        autoTable(doc, {
-          startY: y,
-          head: [['Concepto', 'Fecha Pago', `Valor (${curr})`]],
-          body: [
-            ['VALOR TOTAL DEL PLAN', '—', fmtPrice(tVal)],
-            ['PRIMER ABONO (Liq. TRM del día)', date1, fmtPrice(deposit1)],
-            ['SEGUNDO ABONO (Liq. TRM del día)', date2, fmtPrice(deposit2)],
-            ['SALDO TOTAL', `Límite: ${dateL}`, fmtPrice(balance > 0 ? balance : 0)]
-          ],
-          theme: 'grid',
-          headStyles: { fillColor: [16, 185, 129], textColor: COLORS.white, fontStyle: 'bold', fontSize: 9 },
-          bodyStyles: { fontSize: 8 },
-          columnStyles: {
-            0: { fontStyle: 'bold' },
-            1: { halign: 'center' },
-            2: { halign: 'right', fontStyle: 'bold' }
-          },
-          didParseCell: (data) => {
-            if (data.row.index === 3) {
-              data.cell.styles.fillColor = [254, 240, 138];
-              data.cell.styles.textColor = [0, 0, 0];
-            }
-          },
-          margin: { left: margin, right: margin }
-        });
-        y = doc.lastAutoTable.finalY + 25;
-      }
-    }
+    // --- SECCIÓN DE CIERRE (Mantenida por compatibilidad) ---
 
 
     // --- 3. CONDICIONES GENERALES (Redesigned) ---
@@ -2444,10 +2473,14 @@ export async function generateAccommodationPdf(opts) {
         ['Sub Total Alojamiento', `$ ${Math.round(totals.subtotalAlojamiento).toLocaleString()}`]
       ];
 
+      if (totals.impoconsumoAlo > 0) {
+        summaryRows.push([`Impoconsumo (${option.fee.impoconsumoPercent ?? 8}%)`, `$ ${Math.round(totals.impoconsumoAlo).toLocaleString()}`]);
+      }
+
       if (totals.feeBase > 0 || totals.feeTaxAlo > 0 || totals.feeIva > 0) {
         summaryRows.push([`Fee Agencia`, `$ ${Math.round(totals.feeBase).toLocaleString()}`]);
         if (totals.feeTaxAlo > 0) summaryRows.push(['Impuesto Alojamiento', `$ ${Math.round(totals.feeTaxAlo).toLocaleString()}`]);
-        summaryRows.push([`IVA sobre Fee (19%)`, `$ ${Math.round(totals.feeIva).toLocaleString()}`]);
+        summaryRows.push([`IVA sobre Fee (${option.fee.ivaPercent ?? 19}%)`, `$ ${Math.round(totals.feeIva).toLocaleString()}`]);
       }
 
       summaryRows.push(['TOTAL A PAGAR', `$ ${Math.round(totals.totalAPagar).toLocaleString()}`]);

@@ -71,7 +71,7 @@ const SmartQuoteForm = ({
     });
 
     const [flights, setFlights] = useState([
-        { id: 1, airline: '', flight: '', route: '', depTime: '', arrTime: '', flightDate: '', class: '', bag: '', photo: DEFAULT_IMAGES.flight }
+        { id: 1, airline: '', flight: '', route: '', depTime: '', arrTime: '', flightDate: '', arrDate: '', class: '', bag: '', photo: DEFAULT_IMAGES.flight }
     ]);
     const [includeAir, setIncludeAir] = useState(activeSubTab !== 'terrestre');
     const [showLuggage, setShowLuggage] = useState(false);
@@ -388,7 +388,7 @@ const SmartQuoteForm = ({
     ]);
 
     // Handlers
-    const addFlight = () => setFlights([...flights, { id: Date.now(), airline: '', flight: '', route: '', depTime: '', arrTime: '', flightDate: '', class: '', bag: '', photo: DEFAULT_IMAGES.flight }]);
+    const addFlight = () => setFlights([...flights, { id: Date.now(), airline: '', flight: '', route: '', depTime: '', arrTime: '', flightDate: '', arrDate: '', class: '', bag: '', photo: DEFAULT_IMAGES.flight }]);
     const removeFlight = (id) => setFlights(flights.filter(f => f.id !== id));
     const handleFlightChange = (id, field, value) => setFlights(flights.map(f => f.id === id ? { ...f, [field]: value } : f));
     const addHotel = () => {
@@ -468,7 +468,8 @@ const SmartQuoteForm = ({
                     arrTime: f.arrTime || '',
                     class: f.class || '',
                     observaciones: f.observaciones || '',
-                    flightDate: f.flightDate || ''
+                    flightDate: f.flightDate || '',
+                    arrDate: f.arrDate || ''
                 }))
                 : [];
 
@@ -1096,35 +1097,91 @@ const SmartQuoteForm = ({
                                             >
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-4">
+                                            <div className="flex flex-col gap-6">
+                                                {/* Fila Superior: Aerolínea y No Vuelo */}
+                                                <div className="grid grid-cols-2 gap-4">
                                                     <div>
-                                                        <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">Ruta</label>
-                                                        <input className={`w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white ${isReadOnly ? 'opacity-70' : ''}`} value={flight.route} onChange={e => !isReadOnly && handleFlightChange(flight.id, 'route', e.target.value)} readOnly={isReadOnly} />
+                                                        <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">Aerolínea</label>
+                                                        <div className="relative">
+                                                            <Plane className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
+                                                            <input
+                                                                className={`w-full bg-slate-900/80 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-white focus:border-yellow-500/50 outline-none transition-all ${isReadOnly ? 'opacity-70' : ''}`}
+                                                                placeholder="Ej: Avianca"
+                                                                value={flight.airline}
+                                                                onChange={e => !isReadOnly && handleFlightChange(flight.id, 'airline', e.target.value)}
+                                                                readOnly={isReadOnly}
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">Aerolínea</label>
-                                                            <input className={`w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white ${isReadOnly ? 'opacity-70' : ''}`} value={flight.airline} onChange={e => !isReadOnly && handleFlightChange(flight.id, 'airline', e.target.value)} readOnly={isReadOnly} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">No. Vuelo</label>
-                                                            <input className={`w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white ${isReadOnly ? 'opacity-70' : ''}`} value={flight.flight} onChange={e => !isReadOnly && handleFlightChange(flight.id, 'flight', e.target.value)} readOnly={isReadOnly} />
-                                                        </div>
+                                                    <div>
+                                                        <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">No. Vuelo</label>
+                                                        <input
+                                                            className={`w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-2.5 text-white focus:border-yellow-500/50 outline-none transition-all ${isReadOnly ? 'opacity-70' : ''}`}
+                                                            placeholder="Ej: AV9234"
+                                                            value={flight.flight}
+                                                            onChange={e => !isReadOnly && handleFlightChange(flight.id, 'flight', e.target.value)}
+                                                            readOnly={isReadOnly}
+                                                        />
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-3 gap-3">
-                                                    <div>
-                                                        <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">Fecha</label>
-                                                        <input type="date" className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white" value={flight.flightDate} onChange={e => handleFlightChange(flight.id, 'flightDate', e.target.value)} />
+
+                                                {/* Fila Central: Ruta (Centrada Estelar) */}
+                                                <div className="bg-slate-950/40 p-6 rounded-2xl border border-white/5 space-y-2 text-center relative overflow-hidden">
+                                                    <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent"></div>
+                                                    <label className="relative z-10 block text-[10px] text-yellow-500/70 uppercase font-black tracking-[0.2em] mb-1">Ruta del Trayecto</label>
+                                                    <input
+                                                        className={`relative z-10 w-full bg-transparent text-white font-black text-2xl text-center outline-none placeholder:text-slate-700 uppercase tracking-tight ${isReadOnly ? 'opacity-70' : ''}`}
+                                                        placeholder="BOG > MDE"
+                                                        value={flight.route}
+                                                        onChange={e => !isReadOnly && handleFlightChange(flight.id, 'route', e.target.value)}
+                                                        readOnly={isReadOnly}
+                                                    />
+                                                </div>
+
+                                                {/* Fila Inferior: Bloques de Tiempos (Salida y Llegada) */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Bloque Salida */}
+                                                    <div className="bg-slate-950/30 p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                            <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Salida</span>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3 w-full">
+                                                            <input
+                                                                type="date"
+                                                                className="bg-slate-900/80 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white text-center focus:border-emerald-500/50 outline-none transition-all"
+                                                                value={flight.flightDate}
+                                                                onChange={e => handleFlightChange(flight.id, 'flightDate', e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="time"
+                                                                className="bg-slate-900/80 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white text-center focus:border-emerald-500/50 outline-none transition-all"
+                                                                value={flight.depTime}
+                                                                onChange={e => handleFlightChange(flight.id, 'depTime', e.target.value)}
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">Salida</label>
-                                                        <input type="time" className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white" value={flight.depTime} onChange={e => handleFlightChange(flight.id, 'depTime', e.target.value)} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[10px] text-slate-400 uppercase font-black mb-1.5">Llegada</label>
-                                                        <input type="time" className="w-full bg-slate-900/80 border border-slate-700/50 rounded-xl px-3 py-2.5 text-white" value={flight.arrTime} onChange={e => handleFlightChange(flight.id, 'arrTime', e.target.value)} />
+
+                                                    {/* Bloque Llegada */}
+                                                    <div className="bg-slate-950/30 p-4 rounded-2xl border border-slate-700/30 flex flex-col items-center">
+                                                        <div className="flex items-center gap-2 mb-3">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                                            <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Llegada</span>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-3 w-full">
+                                                            <input
+                                                                type="date"
+                                                                className="bg-slate-900/80 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white text-center focus:border-blue-500/50 outline-none transition-all"
+                                                                value={flight.arrDate}
+                                                                onChange={e => handleFlightChange(flight.id, 'arrDate', e.target.value)}
+                                                            />
+                                                            <input
+                                                                type="time"
+                                                                className="bg-slate-900/80 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white text-center focus:border-blue-500/50 outline-none transition-all"
+                                                                value={flight.arrTime}
+                                                                onChange={e => handleFlightChange(flight.id, 'arrTime', e.target.value)}
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

@@ -46,6 +46,7 @@ const AdminPanel = ({ config, onUpdateConfig, logs, quotes = [], isLoading, onEd
         professional_role: 'Asesora Comercial'
     });
     const [isSavingUser, setIsSavingUser] = useState(false);
+    const [isSavingCompany, setIsSavingCompany] = useState(false);
 
     useEffect(() => {
         if (activeTab === 'companies') {
@@ -259,20 +260,29 @@ const AdminPanel = ({ config, onUpdateConfig, logs, quotes = [], isLoading, onEd
             alert('Nombre y NIT son obligatorios');
             return;
         }
-        let res;
-        if (editingCompany) {
-            res = await CompaniesApi.updateCompany(editingCompany.id, companyForm);
-        } else {
-            res = await CompaniesApi.createCompany(companyForm);
-        }
 
-        if (res.ok) {
-            setIsCompanyModalOpen(false);
-            setEditingCompany(null);
-            setCompanyForm({ name: '', nit: '', address: '', phone: '', email: '', logo_url: '' });
-            loadCompanies();
-        } else {
-            alert('Error al guardar empresa: ' + res.error);
+        setIsSavingCompany(true);
+        try {
+            let res;
+            if (editingCompany) {
+                res = await CompaniesApi.updateCompany(editingCompany.id, companyForm);
+            } else {
+                res = await CompaniesApi.createCompany(companyForm);
+            }
+
+            if (res.ok) {
+                setIsCompanyModalOpen(false);
+                setEditingCompany(null);
+                setCompanyForm({ name: '', nit: '', address: '', phone: '', email: '', logo_url: '' });
+                await loadCompanies();
+            } else {
+                alert('Error al guardar empresa: ' + res.error);
+            }
+        } catch (err) {
+            console.error("Error saving company:", err);
+            alert('Error inesperado al guardar empresa');
+        } finally {
+            setIsSavingCompany(false);
         }
     };
 
@@ -472,7 +482,10 @@ const AdminPanel = ({ config, onUpdateConfig, logs, quotes = [], isLoading, onEd
                                 const advQuotes = quotes.filter(q => q.advisor === advisor);
                                 // Consideramos ventas a todos los folios en paso 3, 4 o 5 (PAGOS, FACTURACIÓN, VOUCHER)
                                 const advConfirmed = advQuotes.filter(q => getProcessStep(q) >= 3);
-                                const advSales = advConfirmed.reduce((acc, q) => acc + (parseFloat(q.data?.salePrice || q.data?.totalPrice || q.data?.totalCharged || 0)), 0);
+                                const advSales = advConfirmed.reduce((acc, q) => {
+                                    const val = q.data?.salePrice || q.data?.totalPrice || q.data?.totalCharged || 0;
+                                    return acc + (parseFloat(val) || 0);
+                                }, 0);
                                 return { name: advisor, quotes: advQuotes.length, sales: advConfirmed.length, volume: advSales };
                             })
                             .sort((a, b) => b.volume - a.volume)
@@ -1090,6 +1103,7 @@ const AdminPanel = ({ config, onUpdateConfig, logs, quotes = [], isLoading, onEd
                             handleLogoUpload={handleLogoUpload}
                             handleSaveCompany={handleSaveCompany}
                             handleDeleteCompany={handleDeleteCompany}
+                            isSavingCompany={isSavingCompany}
                         />
                     )}
 
@@ -1190,7 +1204,8 @@ const CompaniesManagementView = ({
     isUploading,
     handleLogoUpload,
     handleSaveCompany,
-    handleDeleteCompany
+    handleDeleteCompany,
+    isSavingCompany
 }) => (
     <div className="space-y-6 animate-fade-in pb-12">
         <div className="flex justify-between items-center text-white pb-2 border-b border-slate-700/30">
@@ -1291,9 +1306,13 @@ const CompaniesManagementView = ({
                         </div>
                         <div className="flex gap-4">
                             <button onClick={() => setIsCompanyModalOpen(false)} className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-400 font-bold">Cancelar</button>
-                            <button onClick={handleSaveCompany} className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-bold flex items-center justify-center gap-2">
-                                {isUploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save className="w-5 h-5" />}
-                                Guardar
+                            <button
+                                onClick={handleSaveCompany}
+                                disabled={isSavingCompany}
+                                className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-bold flex items-center justify-center gap-2 hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSavingCompany || isUploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save className="w-5 h-5" />}
+                                {isSavingCompany ? 'Guardando...' : 'Guardar'}
                             </button>
                         </div>
                     </div>

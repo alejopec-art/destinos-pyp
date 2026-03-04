@@ -21,6 +21,7 @@ import { CompaniesApi } from '../../services/companiesApi';
 import { generateConfirmationPdf, generateQuotePdf, generateVoucherPdf, generateMonthlyReportPdf, generateEventPdf, generateAccommodationPdf, generateVacacionesMedidaPdf } from '../../utils/pdf';
 import { compressImage, processImageUpload, IMAGE_RECOMMENDATIONS } from '../../utils/image';
 import { getProcessStep, PROCESS_STEPS } from '../../utils/status';
+import { supabase } from '../../services/supabaseClient';
 
 // Expose Monthly Report Generator
 if (typeof window !== 'undefined') {
@@ -110,13 +111,13 @@ const QuotesPage = () => {
     const [isLoadingAdminData, setIsLoadingAdminData] = useState(false);
 
     useEffect(() => {
+        let subscription = null;
+
         const loadAdminData = async () => {
             if (activeMainTab === 'admin' || userRole === 'admin') {
                 setIsLoadingAdminData(true);
                 try {
-                    // Cargar todos los folios sin límite de 50 para métricas globales exactas
                     const quotesResponse = await QuotesApi.listQuotes('', 9999, 0, null);
-                    // Normalizar para que el Admin Panel entienda el formato
                     const normalized = (quotesResponse.data || []).map(q => {
                         const currentStep = getProcessStep(q);
                         const statusLabel = currentStep === 5 ? 'Completado' : (currentStep === 0 ? 'Cancelado' : 'En Proceso');
@@ -124,8 +125,8 @@ const QuotesPage = () => {
                         return {
                             id: q.folio,
                             date: new Date(q.created_at).toISOString().split('T')[0],
-                            advisor: q.data?.advisorName || 'N/A',
-                            client: q.data?.clientName || 'Sin Cliente',
+                            advisor: (q.data?.advisorName || 'N/A').trim(),
+                            client: (q.data?.clientName || 'Sin Cliente').trim(),
                             status: statusLabel,
                             step: currentStep,
                             missing: q.data?.missingItems || [],
@@ -137,13 +138,33 @@ const QuotesPage = () => {
                     });
                     setRealQuotes(normalized);
                 } catch (err) {
-
+                    console.error("Error loading admin data:", err);
                 } finally {
                     setIsLoadingAdminData(false);
                 }
             }
         };
-        loadAdminData();
+
+        if (activeMainTab === 'admin' || userRole === 'admin') {
+            loadAdminData();
+
+            // REAL-TIME SYNC: Subscribe to changes in the quotes table
+            if (supabase) {
+                subscription = supabase
+                    .channel('quotes-admin-sync')
+                    .on('postgres_changes', { event: '*', table: 'quotes' }, (payload) => {
+                        // Re-load data on any change to ensure consistency and exact counts
+                        loadAdminData();
+                    })
+                    .subscribe();
+            }
+        }
+
+        return () => {
+            if (subscription) {
+                supabase.removeChannel(subscription);
+            }
+        };
     }, [activeMainTab, userRole]);
 
     const handleCorrectiveEdit = (quote) => {
@@ -862,6 +883,10 @@ const QuotesPage = () => {
                                             {getFilteredByPeriod(items).slice(0, ITEMS_PER_PAGE).map(row => {
                                                 const data = row.data || {};
                                                 const currentStep = getProcessStep(row);
+                                                const canEdit = user?.role === 'admin' || user?.role === 'manager' || row.created_by === (user?.id || user?.uid);
+                                                const ownershipTitle = canEdit ? "" : "Solo el autor original o administración pueden modificar este folio";
+
+                                                const isDraft = currentStep < 5;
                                                 return (
                                                     <tr
                                                         key={row.folio}
@@ -871,6 +896,7 @@ const QuotesPage = () => {
                                                             <button
                                                                 className="text-blue-400 hover:text-blue-300 font-mono font-bold hover:underline transition-colors text-left"
                                                                 onClick={() => handleViewDetail(row)}
+                                                                title={ownershipTitle}
                                                             >
                                                                 {row.folio}
                                                             </button>
@@ -884,8 +910,8 @@ const QuotesPage = () => {
                                                         <td className="py-3 px-4">
                                                             <div className="flex flex-col items-center gap-1.5">
                                                                 <StatusProgressBar step={currentStep} />
-                                                                <p className="text-[8px] font-black uppercase text-slate-500 tracking-tighter">
-                                                                    Paso {currentStep}/5
+                                                                <p className={`text-[8px] font-black uppercase tracking-tighter ${isDraft ? 'text-amber-500 font-bold animate-pulse' : 'text-slate-500'}`}>
+                                                                    {isDraft ? 'Borrador / En Proceso' : `Paso ${currentStep}/5`}
                                                                 </p>
                                                             </div>
                                                         </td>
@@ -925,13 +951,13 @@ const QuotesPage = () => {
                                                                     <FileDown className="w-3.5 h-3.5" />
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => handleReCotizar(row)}
-                                                                    className="p-2 bg-slate-800 hover:bg-emerald-600 rounded-lg text-slate-400 hover:text-white transition-all shadow-sm"
-                                                                    title="Clonar / Nueva Versión"
+                                                                    onClick={() => canEdit && handleReCotizar(row)}
+                                                                    className={`p-2 rounded-lg text-slate-400 transition-all shadow-sm ${canEdit ? 'bg-slate-800 hover:bg-emerald-600 hover:text-white' : 'bg-slate-900/50 opacity-20 cursor-not-allowed'}`}
+                                                                    title={canEdit ? "Clonar / Nueva Versión" : ownershipTitle}
                                                                 >
                                                                     <RefreshCcw className="w-3.5 h-3.5" />
                                                                 </button>
-                                                                {user?.role === 'admin' && (
+                                                                {(user?.role === 'admin' || user?.role === 'manager') && (
                                                                     <button
                                                                         onClick={() => handleDeleteQuote(row.folio)}
                                                                         className="p-2 bg-slate-800 hover:bg-red-600 rounded-lg text-slate-600 hover:text-white transition-all shadow-sm"
@@ -1231,6 +1257,8 @@ const QuotesPage = () => {
         const [currencyC, setCurrencyC] = useState('USD');
         const [dueDate, setDueDate] = useState('');
         const [hotelCategory, setHotelCategory] = useState('');
+        const [mealPlan, setMealPlan] = useState('TODO INCLUIDO');
+        const [otherMealPlan, setOtherMealPlan] = useState('');
         const [clientNameC, setClientNameC] = useState('');
         const [clientEmailC, setClientEmailC] = useState('');
         const [destinationC, setDestinationC] = useState('');
@@ -1279,6 +1307,7 @@ const QuotesPage = () => {
         const [showConfirmErrors, setShowConfirmErrors] = useState(false);
         const [flightRows, setFlightRows] = useState([{ id: 1, airline: '', eticket: '', pnr: '', passengerName: '', passengerId: '', route: '', flightDate: '', depTime: '', arrTime: '', observaciones: '' }]);
         const [passengerRows, setPassengerRows] = useState([{ id: 1, fullName: '', docId: '', birthDate: '', accommodation: '' }]);
+        const [serviceRows, setServiceRows] = useState([{ id: 1, type: '', operator: '', description: '', dateTime: '', meetingPoint: '', price: '' }]);
         const [folioInput, setFolioInput] = useState('');
         const [confirmSaved, setConfirmSaved] = useState(false);
 
@@ -1300,6 +1329,10 @@ const QuotesPage = () => {
         const addPassengerRow = () => setPassengerRows(prev => [...prev, { id: Date.now(), fullName: '', docId: '', birthDate: '', accommodation: '' }]);
         const removePassengerRow = (id) => setPassengerRows(prev => prev.filter(r => r.id !== id));
         const setPassengerField = (id, field, value) => setPassengerRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+
+        const addServiceRow = () => setServiceRows(prev => [...prev, { id: Date.now(), type: '', operator: '', description: '', dateTime: '', meetingPoint: '', price: '' }]);
+        const removeServiceRow = (id) => setServiceRows(prev => prev.filter(r => r.id !== id));
+        const setServiceField = (id, field, value) => setServiceRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
         const getConfirmErrors = () => {
             const list = [];
             if (!serviceConfirmed) list.push("Aceptar Confirmación de Servicios en el encabezado.");
@@ -1346,6 +1379,8 @@ const QuotesPage = () => {
                         if (loaded.currency) setCurrencyC(loaded.currency);
                         if (loaded.dueDate) setDueDate(loaded.dueDate);
                         if (loaded.hotelCategory) setHotelCategory(loaded.hotelCategory);
+                        if (loaded.mealPlan) setMealPlan(loaded.mealPlan);
+                        if (loaded.otherMealPlan) setOtherMealPlan(loaded.otherMealPlan);
                         if (loaded.clientName) setClientNameC(loaded.clientName);
                         if (loaded.clientEmail) setClientEmailC(loaded.clientEmail);
                         if (loaded.clientPhone) setClientPhoneC(loaded.clientPhone);
@@ -1355,6 +1390,7 @@ const QuotesPage = () => {
                         if (loaded.hotelName) setHotelNameC(loaded.hotelName);
                         if (Array.isArray(loaded.flightRows) && loaded.flightRows.length) setFlightRows(loaded.flightRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
                         if (Array.isArray(loaded.passengerRows) && loaded.passengerRows.length) setPassengerRows(loaded.passengerRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
+                        if (Array.isArray(loaded.serviceRows) && loaded.serviceRows.length) setServiceRows(loaded.serviceRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
                     }
                 }
             };
@@ -1367,12 +1403,13 @@ const QuotesPage = () => {
             const draftData = {
                 serviceConfirmed, serviceType, planType, totalPrice, currency: currencyC,
                 depositDate, firstDeposit, secondDeposit, secondDepositDate, dueDate,
-                hotelCategory, clientName: clientNameC, clientEmail: clientEmailC, clientPhone: clientPhoneC,
+                hotelCategory, mealPlan, otherMealPlan,
+                clientName: clientNameC, clientEmail: clientEmailC, clientPhone: clientPhoneC,
                 destination: destinationC, dateStart: dateStartC, dateEnd: dateEndC, hotelName: hotelNameC,
-                flightRows, passengerRows, updatedAt: new Date().toISOString()
+                flightRows, passengerRows, serviceRows, updatedAt: new Date().toISOString()
             };
             localStorage.setItem(`confirmation_draft_${previewFolio}`, JSON.stringify(draftData));
-        }, [previewFolio, serviceConfirmed, serviceType, planType, totalPrice, currencyC, depositDate, firstDeposit, secondDeposit, secondDepositDate, dueDate, hotelCategory, clientNameC, clientEmailC, clientPhoneC, destinationC, dateStartC, dateEndC, hotelNameC, flightRows, passengerRows]);
+        }, [previewFolio, serviceConfirmed, serviceType, planType, totalPrice, currencyC, depositDate, firstDeposit, secondDeposit, secondDepositDate, dueDate, hotelCategory, mealPlan, otherMealPlan, clientNameC, clientEmailC, clientPhoneC, destinationC, dateStartC, dateEndC, hotelNameC, flightRows, passengerRows, serviceRows]);
         const handleLoadByFolio = async () => {
             const folio = (folioInput || '').trim();
             if (!folio) return;
@@ -1389,6 +1426,8 @@ const QuotesPage = () => {
                 if (data.currency) setCurrencyC(data.currency);
                 if (data.dueDate) setDueDate(data.dueDate);
                 if (data.hotelCategory) setHotelCategory(data.hotelCategory);
+                if (data.mealPlan) setMealPlan(data.mealPlan);
+                if (data.otherMealPlan) setOtherMealPlan(data.otherMealPlan);
                 if (data.clientName) setClientNameC(data.clientName);
                 if (data.clientEmail) setClientEmailC(data.clientEmail);
                 if (data.clientPhone) setClientPhoneC(data.clientPhone);
@@ -1399,6 +1438,7 @@ const QuotesPage = () => {
 
                 if (Array.isArray(data.flightRows) && data.flightRows.length) setFlightRows(data.flightRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
                 if (Array.isArray(data.passengerRows) && data.passengerRows.length) setPassengerRows(data.passengerRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
+                if (Array.isArray(data.serviceRows) && data.serviceRows.length) setServiceRows(data.serviceRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
                 setPreviewFolio(folio);
             }
         };
@@ -1430,6 +1470,8 @@ const QuotesPage = () => {
                     secondDepositDate,
                     dueDate,
                     hotelCategory,
+                    mealPlan,
+                    otherMealPlan,
                     clientName: clientNameC,
                     clientEmail: clientEmailC,
                     clientPhone: clientPhoneC,
@@ -1440,6 +1482,7 @@ const QuotesPage = () => {
                     corporateBrand: activeCorporateBrand,
                     flightRows,
                     passengerRows,
+                    serviceRows,
                     advisorName,
                     advisorRole,
                     updatedAt: new Date().toISOString()
@@ -1699,8 +1742,27 @@ const QuotesPage = () => {
                                             </h3>
                                             <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Detalles del Hotel</p>
                                         </div>
-                                        <div className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-orange-100">
-                                            Todo Incluido
+                                        <div className="flex flex-col items-end gap-2">
+                                            <select
+                                                value={mealPlan}
+                                                onChange={e => setMealPlan(e.target.value)}
+                                                className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-orange-100 outline-none hover:bg-orange-100 transition-colors"
+                                            >
+                                                <option value="DESAYUNO">DESAYUNO</option>
+                                                <option value="DOS COMIDAS">DOS COMIDAS</option>
+                                                <option value="TRES COMIDAS">TRES COMIDAS</option>
+                                                <option value="TODO INCLUIDO">TODO INCLUIDO</option>
+                                                <option value="OTRO">OTRO</option>
+                                            </select>
+                                            {mealPlan === 'OTRO' && (
+                                                <input
+                                                    type="text"
+                                                    value={otherMealPlan}
+                                                    onChange={e => setOtherMealPlan(e.target.value.toUpperCase())}
+                                                    placeholder="ESPECIFIQUE..."
+                                                    className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[9px] font-bold text-slate-700 outline-none focus:border-orange-400"
+                                                />
+                                            )}
                                         </div>
                                     </div>
 
@@ -1731,6 +1793,67 @@ const QuotesPage = () => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Servicios Adicionales Card */}
+                            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-teal-500 group-hover:w-2 transition-all"></div>
+                                <div className="flex justify-between items-start mb-6 pl-4">
+                                    <div>
+                                        <h3 className="font-bold text-slate-800 text-lg uppercase flex items-center gap-2">
+                                            <MapPin className="w-5 h-5 text-emerald-500" /> Servicios Adicionales
+                                        </h3>
+                                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Traslados / Tours / Excursiones</p>
+                                    </div>
+                                    <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-emerald-100">
+                                        Servicios en Destino
+                                    </div>
+                                </div>
+
+                                <div className="pl-4 space-y-6">
+                                    {serviceRows.map((sr, idx) => (
+                                        <div key={sr.id} className="relative p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group/item">
+                                            {serviceRows.length > 1 && (
+                                                <button onClick={() => removeServiceRow(sr.id)} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-100 text-red-500 flex items-center justify-center text-xs hover:bg-red-500 hover:text-white transition-all">×</button>
+                                            )}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Tipo de Servicio</label>
+                                                    <select value={sr.type} onChange={e => setServiceField(sr.id, 'type', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none uppercase focus:border-emerald-400 transition-all">
+                                                        <option value="">Seleccione Tipo</option>
+                                                        <option value="traslado-in">Traslado In (Aeropuerto - Hotel)</option>
+                                                        <option value="traslado-out">Traslado Out (Hotel - Aeropuerto)</option>
+                                                        <option value="city-tour">City Tour</option>
+                                                        <option value="excursion-full">Excursión Full Day</option>
+                                                        <option value="excursion-half">Excursión Half Day</option>
+                                                        <option value="cena-show">Cena Show</option>
+                                                        <option value="actividad-extrema">Actividad Extrema</option>
+                                                        <option value="otros">Otros Servicios</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Nombre del Operador</label>
+                                                    <input value={sr.operator} onChange={e => setServiceField(sr.id, 'operator', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none uppercase focus:border-emerald-400 transition-all" placeholder="EJ: GRAY LINE, DESPEGAR" />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Descripción del Servicio</label>
+                                                    <textarea value={sr.description} onChange={e => setServiceField(sr.id, 'description', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-600 outline-none resize-none focus:border-emerald-400 transition-all h-20" placeholder="Detalle lo que incluye el servicio..."></textarea>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Fecha y Hora de Encuentro</label>
+                                                    <input type="datetime-local" value={sr.dateTime} onChange={e => setServiceField(sr.id, 'dateTime', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-emerald-400 transition-all" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Lugar de Recogida</label>
+                                                    <input value={sr.meetingPoint} onChange={e => setServiceField(sr.id, 'meetingPoint', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none uppercase focus:border-emerald-400 transition-all" placeholder="PUNTO DE ENCUENTRO" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <button onClick={addServiceRow} className="w-full py-3 border-2 border-dashed border-emerald-100 rounded-2xl text-emerald-500 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 hover:border-emerald-300 transition-all flex justify-center items-center gap-2">
+                                        + Agregar Otro Servicio
+                                    </button>
+                                </div>
+                            </div>
 
                             {/* Vuelos Card */}
                             {includes.air && (
@@ -1871,7 +1994,7 @@ const QuotesPage = () => {
                                                 <td className="p-3 font-black text-right text-base text-slate-800 bg-white">
                                                     <div className="flex justify-end items-center gap-1">
                                                         <span className="text-emerald-600 text-[10px]">$</span>
-                                                        <input value={totalPrice} readOnly className="bg-transparent text-right outline-none w-24 border-none pointer-events-none" /> USD
+                                                        <input value={totalPrice} readOnly className="bg-transparent text-right outline-none w-24 border-none pointer-events-none" /> {currencyC}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1883,7 +2006,15 @@ const QuotesPage = () => {
                                                 <td className="p-3 align-middle bg-white">
                                                     <div className="flex flex-col items-end">
                                                         <div className="flex items-center gap-2 font-black text-sm text-slate-800 mb-1">
-                                                            <input value={firstDeposit || ''} onChange={e => setFirstDeposit(e.target.value)} placeholder="0.00" className="w-24 text-right border-b border-slate-200 focus:border-emerald-400 outline-none" /> USD
+                                                            <input
+                                                                value={currencyC === 'COP' ? formatCOP(firstDeposit) : firstDeposit}
+                                                                onChange={e => {
+                                                                    const raw = e.target.value.replace(/\D/g, '');
+                                                                    setFirstDeposit(currencyC === 'COP' ? raw : e.target.value);
+                                                                }}
+                                                                placeholder="0.00"
+                                                                className="w-24 text-right border-b border-slate-200 focus:border-emerald-400 outline-none"
+                                                            /> {currencyC}
                                                         </div>
                                                         <span className="text-[9px] text-slate-400 font-medium italic">(Liquidado a la TRM del día)</span>
                                                     </div>
@@ -1897,7 +2028,15 @@ const QuotesPage = () => {
                                                 <td className="p-3 align-middle bg-white">
                                                     <div className="flex flex-col items-end">
                                                         <div className="flex items-center gap-2 font-black text-sm text-slate-800 mb-1">
-                                                            <input value={secondDeposit || ''} onChange={e => setSecondDeposit(e.target.value)} placeholder="0.00" className="w-24 text-right border-b border-slate-200 focus:border-emerald-400 outline-none" /> USD
+                                                            <input
+                                                                value={currencyC === 'COP' ? formatCOP(secondDeposit) : secondDeposit}
+                                                                onChange={e => {
+                                                                    const raw = e.target.value.replace(/\D/g, '');
+                                                                    setSecondDeposit(currencyC === 'COP' ? raw : e.target.value);
+                                                                }}
+                                                                placeholder="0.00"
+                                                                className="w-24 text-right border-b border-slate-200 focus:border-emerald-400 outline-none"
+                                                            /> {currencyC}
                                                         </div>
                                                         <span className="text-[9px] text-slate-400 font-medium italic">(Liquidado a la TRM del día)</span>
                                                     </div>
@@ -1917,8 +2056,9 @@ const QuotesPage = () => {
                                                             const p1 = parseFloat(firstDeposit) || 0;
                                                             const p2 = parseFloat(secondDeposit) || 0;
                                                             const rem = t - p1 - p2;
-                                                            return rem >= 0 ? rem.toFixed(3) : "0.00";
-                                                        })()} USD
+                                                            const remFormatted = currencyC === 'COP' ? formatCOP(rem) : rem.toFixed(3);
+                                                            return remFormatted;
+                                                        })()} {currencyC}
                                                     </span>
                                                 </td>
                                             </tr>
@@ -2017,7 +2157,7 @@ const QuotesPage = () => {
                                         </div>
                                     )}
                                     <div className="flex gap-4">
-                                        <button className={`px-6 py-2.5 rounded-xl ${validateConfirm() && confirmSaved ? 'bg-white' : 'bg-slate-100 cursor-not-allowed'} border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm`} disabled={!validateConfirm() || !confirmSaved || isSaving} onClick={() => { if (!validateConfirm()) { setShowConfirmErrors(true); return; } if (!confirmSaved) return; generateConfirmationPdf({ folio: previewFolio || folioInput, clientName: clientNameC, clientEmail: clientEmailC, destination: destinationC, corporateBrand: activeCorporateBrand, flightRows, passengerRows, hotelName: hotelNameC, dateStart: dateStartC, dateEnd: dateEndC, totalPrice, firstDeposit, depositDate, secondDeposit, secondDepositDate, dueDate, advisorName, advisorRole, currency: formData.currency }); }}>
+                                        <button className={`px-6 py-2.5 rounded-xl ${validateConfirm() && confirmSaved ? 'bg-white' : 'bg-slate-100 cursor-not-allowed'} border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm`} disabled={!validateConfirm() || !confirmSaved || isSaving} onClick={() => { if (!validateConfirm()) { setShowConfirmErrors(true); return; } if (!confirmSaved) return; generateConfirmationPdf({ folio: previewFolio || folioInput, clientName: clientNameC, clientEmail: clientEmailC, destination: destinationC, corporateBrand: activeCorporateBrand, flightRows, passengerRows, serviceRows, hotelName: hotelNameC, dateStart: dateStartC, dateEnd: dateEndC, totalPrice, firstDeposit, depositDate, secondDeposit, secondDepositDate, dueDate, advisorName, advisorRole, currency: currencyC }); }}>
                                             <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Descargar PDF
                                         </button>
                                         <button className={`px-6 py-2.5 rounded-xl ${validateConfirm() ? 'bg-gradient-to-r from-blue-600 to-blue-500' : 'bg-slate-300'} text-white font-bold text-xs hover:shadow-lg hover:shadow-blue-500/30 transition-all flex items-center gap-2 shadow-md`} disabled={isSaving} onClick={() => { if (!validateConfirm()) { setShowConfirmErrors(true); return; } handleSaveConfirm(); }}>
@@ -3322,7 +3462,7 @@ const QuotesPage = () => {
                 airline: 'AEROLÍNEA',
                 luggage: { personal: true, hand: true, checked: false },
                 flights: [
-                    { id: Date.now(), airline: '', flight: '', departure: '', arrival: '', duration: '', aircraft: '' }
+                    { id: Date.now(), airline: '', flight: '', route: '', depSchedule: '', arrSchedule: '', pnr: '', passenger: '', pid: '', status: 'CONFIRMADO' }
                 ],
                 rates: { adultAffiliate: '', adultNonAffiliate: '', child: '', infant: '' },
                 totalToPay: '',
@@ -3443,7 +3583,7 @@ const QuotesPage = () => {
                 if (q.id === quoteId) {
                     return {
                         ...q,
-                        flights: [...q.flights, { id: Date.now(), airline: '', flight: '', departure: '', arrival: '', duration: '', aircraft: '' }]
+                        flights: [...q.flights, { id: Date.now(), airline: '', flight: '', route: '', depSchedule: '', arrSchedule: '', pnr: '', passenger: '', pid: '', status: 'CONFIRMADO' }]
                     };
                 }
                 return q;
@@ -3537,16 +3677,17 @@ const QuotesPage = () => {
                     rates: quote.rates,
                     totalToPay: quote.totalToPay,
                     flights: quote.flights.map(f => ({
-                        airline: f.flight || '',
+                        airline: f.airline || '',
                         flight: f.flight || '',
                         route: f.route || '',
-                        flightDate: f.schedule || '',
+                        flightDate: f.depSchedule || '',
+                        arrDate: f.arrSchedule || '',
                         depTime: '',
                         arrTime: '',
-                        departure: f.departure,
-                        arrival: f.arrival,
-                        duration: f.duration,
-                        equipment: f.aircraft || f.equipment
+                        pnr: f.pnr || '',
+                        passenger: f.passenger || '',
+                        pid: f.pid || '',
+                        status: f.status || 'CONFIRMADO'
                     }))
                 }));
 
@@ -3892,17 +4033,31 @@ const QuotesPage = () => {
                                                     <td className="p-4">
                                                         <div className="flex flex-col gap-2">
                                                             <input
-                                                                className="w-full bg-slate-900/40 border border-slate-700/30 rounded-lg px-2 py-1.5 text-slate-200 font-bold text-xs outline-none placeholder-slate-700 uppercase text-center focus:border-blue-500/50 transition-all"
+                                                                className="w-full bg-slate-900/40 border border-slate-700/30 rounded-lg px-2 py-1.5 text-blue-400 font-black text-sm outline-none placeholder-slate-700 uppercase text-center focus:border-blue-500/50 transition-all"
                                                                 placeholder="RUTA (BOG-MAD-BOG)"
                                                                 value={f.route || ''}
                                                                 onChange={e => handleFlightChange(quote.id, f.id, 'route', e.target.value)}
                                                             />
-                                                            <input
-                                                                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-lg px-2 py-1 text-slate-400 text-[9px] outline-none placeholder-slate-800 text-center"
-                                                                placeholder="FECHAS / HORAS"
-                                                                value={f.schedule || ''}
-                                                                onChange={e => handleFlightChange(quote.id, f.id, 'schedule', e.target.value)}
-                                                            />
+                                                            <div className="grid grid-cols-1 gap-1">
+                                                                <div className="relative">
+                                                                    <div className="absolute left-2 top-1.5 w-1 h-1 rounded-full bg-emerald-500"></div>
+                                                                    <input
+                                                                        className="w-full bg-slate-900/60 border border-slate-700/50 rounded-lg pl-5 pr-2 py-1 text-slate-300 text-[9px] outline-none placeholder-slate-800 text-center focus:border-emerald-500/30"
+                                                                        placeholder="SALIDA (FECHA Y HORA)"
+                                                                        value={f.depSchedule || ''}
+                                                                        onChange={e => handleFlightChange(quote.id, f.id, 'depSchedule', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="relative">
+                                                                    <div className="absolute left-2 top-1.5 w-1 h-1 rounded-full bg-blue-500"></div>
+                                                                    <input
+                                                                        className="w-full bg-slate-900/60 border border-slate-700/50 rounded-lg pl-5 pr-2 py-1 text-slate-300 text-[9px] outline-none placeholder-slate-800 text-center focus:border-blue-500/30"
+                                                                        placeholder="LLEGADA (FECHA Y HORA)"
+                                                                        value={f.arrSchedule || ''}
+                                                                        onChange={e => handleFlightChange(quote.id, f.id, 'arrSchedule', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </td>
 
@@ -5282,7 +5437,8 @@ const QuotesPage = () => {
                 fee: {
                     base: '14496',
                     taxAlojamiento: '0',
-                    ivaPercent: 19
+                    ivaPercent: 19,
+                    impoconsumoPercent: 8
                 },
                 notes: ''
             }
@@ -5316,7 +5472,7 @@ const QuotesPage = () => {
                 location: '',
                 images: [DEFAULT_IMAGES.HOTEL],
                 nights: [{ id: Date.now() + 1, date: '', description: 'Alojamiento habitación sencilla', pax: 1, total: '' }],
-                fee: { base: '14496', taxAlojamiento: '0', ivaPercent: 19 },
+                fee: { base: '14496', taxAlojamiento: '0', ivaPercent: 19, impoconsumoPercent: 8 },
                 notes: ''
             }]);
         };
@@ -5359,14 +5515,20 @@ const QuotesPage = () => {
 
         const calculateOptionTotals = (option) => {
             const subtotalAlojamiento = option.nights.reduce((acc, n) => acc + (parseFloat(String(n.total).replace(/,/g, '')) || 0), 0);
+
+            // Impoconsumo is usually calculated on the subtotal like in Events
+            const impoconsumoAlo = subtotalAlojamiento * (parseFloat(option.fee.impoconsumoPercent) / 100 || 0);
+
             const feeBase = parseFloat(String(option.fee.base).replace(/,/g, '')) || 0;
             const feeTaxAlo = parseFloat(String(option.fee.taxAlojamiento).replace(/,/g, '')) || 0;
-            const feeIva = feeBase * (option.fee.ivaPercent / 100);
+            const feeIva = feeBase * (parseFloat(option.fee.ivaPercent) / 100 || 0);
+
             const totalFee = feeBase + feeTaxAlo + feeIva;
-            const totalAPagar = subtotalAlojamiento + totalFee;
+            const totalAPagar = subtotalAlojamiento + impoconsumoAlo + totalFee;
 
             return {
                 subtotalAlojamiento,
+                impoconsumoAlo,
                 feeBase,
                 feeTaxAlo,
                 feeIva,
@@ -5704,7 +5866,7 @@ const QuotesPage = () => {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-3 gap-4">
                                             <div>
                                                 <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">Impuesto Aloj.</label>
                                                 <input
@@ -5715,9 +5877,37 @@ const QuotesPage = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">IVA Servicios (19%)</label>
+                                                <div className="flex justify-between items-center mb-1 pr-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">IVA Servicios</label>
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            className="w-10 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-slate-400 text-[10px] font-bold text-center outline-none focus:border-blue-500/30 transition-all"
+                                                            value={option.fee.ivaPercent ?? 19}
+                                                            onChange={(e) => updateOption(option.id, 'fee', { ...option.fee, ivaPercent: e.target.value })}
+                                                        />
+                                                        <span className="text-slate-600 text-[10px] font-bold">%</span>
+                                                    </div>
+                                                </div>
                                                 <div className="w-full bg-slate-950/30 border border-slate-800 rounded-xl py-2 px-4 text-right text-slate-400 text-xs font-mono">
                                                     ${Math.round(totals.feeIva).toLocaleString()}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between items-center mb-1 pr-1">
+                                                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">Impoconsumo</label>
+                                                    <div className="flex items-center gap-1">
+                                                        <input
+                                                            type="number"
+                                                            className="w-10 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-slate-400 text-[10px] font-bold text-center outline-none focus:border-blue-500/30 transition-all"
+                                                            value={option.fee.impoconsumoPercent ?? 8}
+                                                            onChange={(e) => updateOption(option.id, 'fee', { ...option.fee, impoconsumoPercent: e.target.value })}
+                                                        />
+                                                        <span className="text-slate-600 text-[10px] font-bold">%</span>
+                                                    </div>
+                                                </div>
+                                                <div className="w-full bg-slate-950/30 border border-slate-800 rounded-xl py-2 px-4 text-right text-slate-400 text-xs font-mono">
+                                                    ${Math.round(totals.impoconsumoAlo).toLocaleString()}
                                                 </div>
                                             </div>
                                         </div>
@@ -5829,12 +6019,12 @@ const QuotesPage = () => {
 
         const calculateTotals = () => {
             const subtotalServices = services.reduce((acc, s) => acc + (parseFloat(String(s.total).replace(/,/g, '')) || 0), 0);
-            const ivaAmount = subtotalServices * (finance.ivaPercent / 100);
-            const impoconsumoAmount = subtotalServices * (finance.impoconsumoPercent / 100);
+            const ivaAmount = subtotalServices * (parseFloat(finance.ivaPercent) / 100 || 0);
+            const impoconsumoAmount = subtotalServices * (parseFloat(finance.impoconsumoPercent) / 100 || 0);
             const subtotalEvent = subtotalServices + ivaAmount + impoconsumoAmount;
 
-            const feeAmount = subtotalEvent * (finance.agencyFeePercent / 100);
-            const feeIvaAmount = feeAmount * (finance.feeIvaPercent / 100);
+            const feeAmount = subtotalEvent * (parseFloat(finance.agencyFeePercent) / 100 || 0);
+            const feeIvaAmount = feeAmount * (parseFloat(finance.feeIvaPercent) / 100 || 0);
             const totalFee = feeAmount + feeIvaAmount;
 
             const totalEvent = subtotalEvent + totalFee;
@@ -6343,10 +6533,28 @@ const QuotesPage = () => {
                             <span className="text-slate-400 text-xs font-bold uppercase">Subtotal Servicios:</span>
                             <span className="text-white text-right font-mono text-sm">${totals.subtotalServices.toLocaleString()}</span>
 
-                            <span className="text-slate-500 text-[10px] font-bold uppercase flex items-center gap-2">IVA {finance.ivaPercent}%:</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-500 text-[10px] font-bold uppercase">IVA:</span>
+                                <input
+                                    type="number"
+                                    className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 text-[10px] font-bold text-center outline-none focus:border-pink-500/30 transition-all"
+                                    value={finance.ivaPercent}
+                                    onChange={(e) => setFinance({ ...finance, ivaPercent: e.target.value })}
+                                />
+                                <span className="text-slate-600 text-[10px]">%</span>
+                            </div>
                             <span className="text-slate-300 text-right font-mono text-xs">${Math.round(totals.ivaAmount).toLocaleString()}</span>
 
-                            <span className="text-slate-500 text-[10px] font-bold uppercase flex items-center gap-2">Impoconsumo {finance.impoconsumoPercent}%:</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-500 text-[10px] font-bold uppercase">Impoconsumo:</span>
+                                <input
+                                    type="number"
+                                    className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 text-[10px] font-bold text-center outline-none focus:border-pink-500/30 transition-all"
+                                    value={finance.impoconsumoPercent}
+                                    onChange={(e) => setFinance({ ...finance, impoconsumoPercent: e.target.value })}
+                                />
+                                <span className="text-slate-600 text-[10px]">%</span>
+                            </div>
                             <span className="text-slate-300 text-right font-mono text-xs">${Math.round(totals.impoconsumoAmount).toLocaleString()}</span>
 
                             <div className="col-span-2 border-t border-slate-700/30 my-1"></div>
@@ -6366,7 +6574,16 @@ const QuotesPage = () => {
                             </div>
                             <span className="text-cyan-300 text-right font-mono text-xs">${Math.round(totals.feeAmount).toLocaleString()}</span>
 
-                            <span className="text-slate-500 text-[10px] font-bold uppercase">IVA sobre Fee ({finance.feeIvaPercent}%):</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-500 text-[10px] font-bold uppercase">IVA sobre Fee:</span>
+                                <input
+                                    type="number"
+                                    className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-slate-400 text-[10px] font-bold text-center outline-none focus:border-cyan-500/30 transition-all"
+                                    value={finance.feeIvaPercent}
+                                    onChange={(e) => setFinance({ ...finance, feeIvaPercent: e.target.value })}
+                                />
+                                <span className="text-slate-600 text-[10px]">%</span>
+                            </div>
                             <span className="text-slate-400 text-right font-mono text-[10px]">${Math.round(totals.feeIvaAmount).toLocaleString()}</span>
 
                             <div className="col-span-2 mt-4 bg-slate-900 border border-slate-700 rounded-2xl p-4 flex justify-between items-center shadow-inner">
@@ -6959,7 +7176,8 @@ const QuotesPage = () => {
         );
     };
 
-    const SmartQuoteForm = ({ config, isReadOnly: inheritedReadOnly }) => {
+    const SmartQuoteForm = ({ config, isReadOnly: inheritedReadOnly, corporateCompanies = [] }) => {
+        const isReadOnly = inheritedReadOnly;
         const [currentStep, setCurrentStep] = useState(1);
         const firstFieldStep1Ref = useRef(null);
         const firstFieldStep2Ref = useRef(null);
@@ -7366,6 +7584,31 @@ const QuotesPage = () => {
             currency, currentStep, quoteType, activeSubTab, itineraryTable
         ]);
 
+        // --- LOCAL STORAGE SYNC (Continuity & Persistence) ---
+        useEffect(() => {
+            if (isReadOnly) return;
+            const DRAFT_KEY = `QUOTE_DRAFT_${user?.id || 'ANON'}`;
+            const syncTimer = setTimeout(() => {
+                const draftData = {
+                    clientData, flights, hotels, extras, luggage, groundLogistics,
+                    corporateOptions, selectedCorporateBrand, generalConditions,
+                    documentsInfo, closingNote, observacionesImportantes,
+                    cruiseService, carRentalService, medicalAssistanceService,
+                    currency, quoteType, activeSubTab, itineraryTable,
+                    previewFolio,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(draftData));
+            }, 2000);
+            return () => clearTimeout(syncTimer);
+        }, [
+            clientData, flights, hotels, extras, luggage, groundLogistics,
+            corporateOptions, selectedCorporateBrand, generalConditions,
+            documentsInfo, closingNote, observacionesImportantes,
+            cruiseService, carRentalService, medicalAssistanceService,
+            currency, quoteType, activeSubTab, itineraryTable, previewFolio, isReadOnly
+        ]);
+
         // Handlers
         const addFlight = () => setFlights([...flights, { id: Date.now(), airline: '', flight: '', route: '', depTime: '', arrTime: '', flightDate: '', class: '', bag: '' }]);
         const removeFlight = (id) => setFlights(flights.filter(f => f.id !== id));
@@ -7720,14 +7963,44 @@ const QuotesPage = () => {
                     <>
                         <div className="group">
                             <label className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Razón Social / Empresa</label>
-                            <input
-                                ref={firstFieldStep1Ref}
-                                tabIndex={1}
-                                className={`w-full bg-slate-900 border rounded-xl p-3 text-white transition-colors outline-none ${showErrors && !isFilled(clientData.company) ? 'border-red-500/50 focus:border-red-400' : 'border-slate-700 focus:border-blue-500'} ${(selectedCorporateBrand || isReadOnly) ? 'opacity-70 cursor-not-allowed' : ''}`}
-                                value={clientData.company}
-                                onChange={e => setClientData({ ...clientData, company: e.target.value })}
-                                readOnly={!!selectedCorporateBrand || isReadOnly}
-                            />
+                            {corporateCompanies.length > 0 && !isReadOnly ? (
+                                <select
+                                    ref={firstFieldStep1Ref}
+                                    tabIndex={1}
+                                    className={`w-full bg-slate-900 border rounded-xl p-3 text-white transition-colors outline-none ${showErrors && !isFilled(clientData.company) ? 'border-red-500/50 focus:border-red-400' : 'border-slate-700 focus:border-blue-500'}`}
+                                    value={clientData.company}
+                                    onChange={e => {
+                                        const selected = corporateCompanies.find(c => c.name === e.target.value);
+                                        setClientData({
+                                            ...clientData,
+                                            company: e.target.value,
+                                            nit: selected ? selected.nit : clientData.nit
+                                        });
+                                    }}
+                                >
+                                    <option value="">Seleccione una empresa...</option>
+                                    {corporateCompanies.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
+                                    <option value="OTRA">OTRA (Escribir manualmente...)</option>
+                                </select>
+                            ) : (
+                                <input
+                                    ref={firstFieldStep1Ref}
+                                    tabIndex={1}
+                                    className={`w-full bg-slate-900 border rounded-xl p-3 text-white transition-colors outline-none ${showErrors && !isFilled(clientData.company) ? 'border-red-500/50 focus:border-red-400' : 'border-slate-700 focus:border-blue-500'} ${(selectedCorporateBrand || isReadOnly) ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                    value={clientData.company}
+                                    onChange={e => setClientData({ ...clientData, company: e.target.value })}
+                                    readOnly={!!selectedCorporateBrand || isReadOnly}
+                                />
+                            )}
+                            {clientData.company === 'OTRA' && (
+                                <input
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white mt-2 animate-fade-in"
+                                    placeholder="Escriba el nombre de la empresa..."
+                                    onChange={e => setClientData({ ...clientData, company: e.target.value })}
+                                />
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -8587,14 +8860,35 @@ const QuotesPage = () => {
                                                     {/* Plan de Alimentación */}
                                                     <div className="flex-[1.5] min-w-[180px]">
                                                         <label className="text-[10px] text-slate-500 font-bold uppercase mb-1.5 ml-1 block tracking-wider">Plan de Alimentación</label>
-                                                        <input
-                                                            tabIndex={103 + (idx * 10)}
-                                                            className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-2.5 text-slate-300 text-xs font-bold outline-none focus:border-yellow-500/50 transition-all placeholder:text-slate-700 uppercase"
-                                                            placeholder="TODO INCLUIDO"
-                                                            value={hotel.observaciones || ''}
-                                                            onChange={e => handleHotelChange(hotel.id, 'observaciones', e.target.value)}
-                                                            readOnly={isReadOnly}
-                                                        />
+                                                        <div className="flex flex-col gap-2">
+                                                            <select
+                                                                tabIndex={103 + (idx * 10)}
+                                                                className="w-full bg-slate-900/60 border border-slate-700/50 rounded-xl px-4 py-2.5 text-slate-300 text-xs font-bold outline-none focus:border-yellow-500/50 transition-all uppercase"
+                                                                value={['DESAYUNO', 'DOS COMIDAS', 'TRES COMIDAS', 'TODO INCLUIDO'].includes(hotel.observaciones) ? hotel.observaciones : (hotel.observaciones ? 'OTRO' : '')}
+                                                                onChange={e => {
+                                                                    const val = e.target.value;
+                                                                    handleHotelChange(hotel.id, 'observaciones', val === 'OTRO' ? '' : val);
+                                                                }}
+                                                                readOnly={isReadOnly}
+                                                            >
+                                                                <option value="">SELECCIONE PLAN</option>
+                                                                <option value="DESAYUNO">DESAYUNO</option>
+                                                                <option value="DOS COMIDAS">DOS COMIDAS</option>
+                                                                <option value="TRES COMIDAS">TRES COMIDAS</option>
+                                                                <option value="TODO INCLUIDO">TODO INCLUIDO</option>
+                                                                <option value="OTRO">OTRO (ESPECIFICAR)</option>
+                                                            </select>
+                                                            {(hotel.observaciones && !['DESAYUNO', 'DOS COMIDAS', 'TRES COMIDAS', 'TODO INCLUIDO'].includes(hotel.observaciones)) ||
+                                                                (hotel.observaciones === '' && document.activeElement?.value === 'OTRO') ? (
+                                                                <input
+                                                                    className="w-full bg-slate-900/40 border border-slate-700/30 rounded-lg px-3 py-1.5 text-slate-400 text-[10px] outline-none focus:border-yellow-500/30 uppercase"
+                                                                    placeholder="ESPECIFIQUE OTRO PLAN..."
+                                                                    value={hotel.observaciones}
+                                                                    onChange={e => handleHotelChange(hotel.id, 'observaciones', e.target.value)}
+                                                                    readOnly={isReadOnly}
+                                                                />
+                                                            ) : null}
+                                                        </div>
                                                     </div>
 
                                                     {/* Acciones y Toggles */}
@@ -9265,7 +9559,31 @@ const QuotesPage = () => {
 
                                             setCurrentStep(prev => {
                                                 const n = Math.min(4, prev + 1);
+                                                // EMERGENCY SYNC: Silent save when moving from Step 1 to Step 2
+                                                if (prev === 1 && n === 2) {
+                                                    const silentSave = async () => {
+                                                        const folio = previewFolio || await Folios.getNext(activeSubTab === 'corporativo' ? 'COT-COR' : 'COT-VAC', getSubKeyFromTab(activeSubTab || 'nacional'));
+                                                        if (!previewFolio) setPreviewFolio(folio);
 
+                                                        const payload = {
+                                                            folio,
+                                                            clientName: quoteType === 'vacacional' ? (clientData.name || '') : (clientData.company || ''),
+                                                            clientDoc: quoteType === 'vacacional' ? (clientData.id || '') : (clientData.nit || ''),
+                                                            destination: clientData.destination || '',
+                                                            dateStart: clientData.dateStart || '',
+                                                            dateEnd: clientData.dateEnd || '',
+                                                            adults: (parseInt(clientData.adultsAffiliate) || 0) + (parseInt(clientData.adultsNonAffiliate) || 0) || '1',
+                                                            children: clientData.children || '0',
+                                                            infants: clientData.infants || '0',
+                                                            advisorName,
+                                                            status: 'draft',
+                                                            currentStep: 1,
+                                                            updatedAt: new Date().toISOString()
+                                                        };
+                                                        await QuotesApi.createQuote(payload, user);
+                                                    };
+                                                    silentSave();
+                                                }
                                                 return n;
                                             });
                                         } catch (err) {
@@ -9594,7 +9912,11 @@ const QuotesPage = () => {
                                                 />
                                             ) : (
                                                 !['crucero', 'tiquetes', 'eventos', 'alojamiento', 'vacaciones-medida'].includes(activeSubTab) ? (
-                                                    <SmartQuoteForm config={adminConfig} />
+                                                    <SmartQuoteForm
+                                                        config={adminConfig}
+                                                        isReadOnly={isReadOnly}
+                                                        corporateCompanies={corporateCompanies}
+                                                    />
                                                 ) : activeSubTab === 'tiquetes' ? (
                                                     <FlightQuoteForm />
                                                 ) : activeSubTab === 'vacaciones-medida' ? (

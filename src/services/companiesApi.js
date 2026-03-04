@@ -88,7 +88,12 @@ export const CompaniesApi = {
         .from('company-logos')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message === 'Bucket not found') {
+          return { ok: false, error: 'Configuración faltante: Por favor crea un Bucket llamado "company-logos" en el almacenamiento de Supabase.' };
+        }
+        throw uploadError;
+      }
 
       const { data } = supabase.storage.from('company-logos').getPublicUrl(filePath);
       return { ok: true, url: data.publicUrl };
