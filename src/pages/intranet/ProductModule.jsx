@@ -338,96 +338,174 @@ const ProductModule = () => {
                 {/* Main Grid: Calculator */}
                 <div className="lg:col-span-12 xl:col-span-8 overflow-x-auto">
                     <div className="min-w-[1000px] bg-[#0d0d0f]/80 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="bg-black/60 text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] text-left">
-                                    <th className="p-6 border-b border-white/5">Alojamiento</th>
-                                    <th className="p-6 border-b border-white/5">Hotel</th>
-                                    <th className="p-6 border-b border-white/5">Asistencia</th>
-                                    <th className="p-6 border-b border-white/5">Receptivos</th>
-                                    <th className="p-6 border-b border-white/5">Costo PT</th>
-                                    <th className="p-6 border-b border-white/5">Markup %</th>
-                                    <th className="p-6 border-b border-white/5">Tiquete</th>
-                                    <th className="p-6 border-b border-white/5">Fee (Neto+IVA)</th>
-                                    <th className="p-6 border-b border-white/5 text-right bg-lime-500/5 text-lime-500">Total Venta</th>
+                        <table className="w-full border-collapse text-left">
+                            <thead className="bg-[#0f0f13] shadow-xl">
+                                <tr>
+                                    <th className="p-4 border-b border-white/5 text-[10px] uppercase font-black tracking-widest text-slate-500 w-64 bg-black/40"> Concepto a Cotizar </th>
+                                    {ACCOMMODATIONS.map(type => (
+                                        <th key={type} className="p-4 border-b border-white/5 border-l border-white/5 text-xs uppercase font-black tracking-widest text-white text-center w-40 bg-black/40">
+                                            {type}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {ACCOMMODATIONS.map(type => {
-                                    const { costoPT, totalVenta, totalVentaCOP } = calculateTotals(activeTab, type);
-                                    const row = data[activeTab].rows[type];
-                                    return (
-                                        <tr key={type} className="group hover:bg-white/[0.02] transition-colors">
-                                            <td className="p-6">
-                                                <span className="text-xs font-black text-white uppercase tracking-wider">{type}</span>
+                                {/* 1. TARIFA A COBRAR (TOTAL VENTA) */}
+                                <tr className="bg-blue-600/10 hover:bg-blue-600/20 transition-colors">
+                                    <td className="p-4 border-r border-white/5 font-black text-[11px] text-blue-400 uppercase tracking-widest pl-4">
+                                        Tarifa a Cobrar por Persona
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => {
+                                        const { totalVenta } = calculateTotals(activeTab, type);
+                                        return (
+                                            <td key={`tarifa-${type}`} className="p-4 text-center border-r border-white/5">
+                                                <span className="text-xl font-black text-blue-400 font-mono tracking-tighter shadow-blue-500 drop-shadow-md">
+                                                    $ {Math.round(totalVenta).toLocaleString()}
+                                                </span>
                                             </td>
-                                            <td className="p-4">
+                                        );
+                                    })}
+                                </tr>
+
+                                {/* 2. COSTO TOTAL TERRESTRE (Costo PT + Utilidad) -> in Excel it's Valor Porcion Terrestre */}
+                                <tr className="bg-white/[0.02]">
+                                    <td className="p-4 border-r border-white/5 font-bold text-[10px] text-slate-400 uppercase tracking-wider pl-4">
+                                        Valor Porción Terrestre
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => {
+                                        const { costoPT, utilidad } = calculateTotals(activeTab, type);
+                                        return (
+                                            <td key={`pt-${type}`} className="p-4 text-center border-r border-white/5">
+                                                <span className="text-sm font-mono font-bold text-slate-300">
+                                                    $ {Math.round(costoPT + utilidad).toLocaleString()}
+                                                </span>
+                                            </td>
+                                        );
+                                    })}
+                                </tr>
+
+                                {/* 3. VALOR DEL TIQUETE */}
+                                <tr className="hover:bg-white/[0.02] transition-colors">
+                                    <td className="p-4 border-r border-white/5 font-bold text-[10px] text-white uppercase tracking-wider pl-4">
+                                        Valor del Tiquete
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => (
+                                        <td key={`tiq-${type}`} className="p-3 text-center border-r border-white/5">
+                                            <EditableInput
+                                                value={data[activeTab].rows[type].tiquete}
+                                                onChange={val => handleInputChange(activeTab, type, 'tiquete', val)}
+                                                prefix="$"
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+
+                                {/* 4. TARIFA ADMINISTRATIVA */}
+                                <tr className="hover:bg-white/[0.02] transition-colors">
+                                    <td className="p-4 border-r border-white/5 font-bold text-[10px] text-white uppercase tracking-wider pl-4">
+                                        Tarifa Admin. (Neta + IVA)
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => (
+                                        <td key={`adm-${type}`} className="p-3 text-center border-r border-white/5">
+                                            <div className="flex flex-col gap-1">
                                                 <EditableInput
-                                                    value={row.hotel}
-                                                    onChange={val => handleInputChange(activeTab, type, 'hotel', val)}
-                                                    prefix="$"
+                                                    value={data[activeTab].rows[type].adminFeeNet}
+                                                    onChange={val => handleInputChange(activeTab, type, 'adminFeeNet', val)}
+                                                    prefix="N"
                                                 />
-                                            </td>
-                                            <td className="p-4">
                                                 <EditableInput
-                                                    value={row.asistencia}
-                                                    onChange={val => handleInputChange(activeTab, type, 'asistencia', val)}
-                                                    prefix="$"
+                                                    value={data[activeTab].rows[type].adminFeeIVA}
+                                                    onChange={val => handleInputChange(activeTab, type, 'adminFeeIVA', val)}
+                                                    prefix="I"
                                                 />
+                                            </div>
+                                        </td>
+                                    ))}
+                                </tr>
+
+                                {/* 5. ASISTENCIA MEDICA (Yellow) */}
+                                <tr className="bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors">
+                                    <td className="p-4 border-r border-yellow-500/10 font-bold text-[10px] text-yellow-500 uppercase tracking-wider pl-4">
+                                        Asistencia Médica
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => (
+                                        <td key={`asis-${type}`} className="p-3 text-center border-r border-yellow-500/10">
+                                            <EditableInput
+                                                value={data[activeTab].rows[type].asistencia}
+                                                onChange={val => handleInputChange(activeTab, type, 'asistencia', val)}
+                                                prefix="$"
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+
+                                {/* 6. TARIFA DE ALOJAMIENTO (Yellow) */}
+                                <tr className="bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors">
+                                    <td className="p-4 border-r border-yellow-500/10 pl-4">
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-[10px] text-yellow-500 uppercase tracking-wider">Tarifa de Alojamiento</span>
+                                            <span className="text-[9px] text-yellow-500/60 font-medium tracking-widest mt-0.5">({data[activeTab].nights} Noches)</span>
+                                        </div>
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => (
+                                        <td key={`hot-${type}`} className="p-3 text-center border-r border-yellow-500/10">
+                                            <EditableInput
+                                                value={data[activeTab].rows[type].hotel}
+                                                onChange={val => handleInputChange(activeTab, type, 'hotel', val)}
+                                                prefix="$"
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+
+                                {/* 7. RECEPTIVOS / TRASLADOS (Green) */}
+                                <tr className="bg-green-500/5 hover:bg-green-500/10 transition-colors">
+                                    <td className="p-4 border-r border-green-500/10 font-bold text-[10px] text-green-500 uppercase tracking-wider pl-4">
+                                        Traslados / Receptivos
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => (
+                                        <td key={`rec-${type}`} className="p-3 text-center border-r border-green-500/10">
+                                            <EditableInput
+                                                value={data[activeTab].rows[type].receptivos}
+                                                onChange={val => handleInputChange(activeTab, type, 'receptivos', val)}
+                                                prefix="$"
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+
+                                {/* 8. MARKUP / UTILIDAD PORCION TERRESTRE (Orange) */}
+                                <tr className="bg-orange-500/5 hover:bg-orange-500/10 transition-colors">
+                                    <td className="p-4 border-r border-orange-500/10 font-bold text-[10px] text-orange-500 uppercase tracking-wider pl-4">
+                                        Utilidad Porción (%)
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => (
+                                        <td key={`mkp-${type}`} className="p-3 text-center border-r border-orange-500/10">
+                                            <EditableInput
+                                                value={data[activeTab].rows[type].markup}
+                                                onChange={val => handleInputChange(activeTab, type, 'markup', val)}
+                                                suffix="%"
+                                            />
+                                        </td>
+                                    ))}
+                                </tr>
+
+                                {/* 9. UTILIDAD GANANCIA */}
+                                <tr className="bg-orange-500/10">
+                                    <td className="p-4 border-r border-orange-500/20 font-black text-[10px] text-orange-400 uppercase tracking-wider text-right pr-4">
+                                        Ganancia Neta
+                                    </td>
+                                    {ACCOMMODATIONS.map(type => {
+                                        const { utilidad } = calculateTotals(activeTab, type);
+                                        return (
+                                            <td key={`util-${type}`} className="p-4 text-center border-r border-orange-500/20">
+                                                <span className="text-sm font-black text-orange-400 font-mono tracking-tighter">
+                                                    $ {Math.round(utilidad).toLocaleString()}
+                                                </span>
                                             </td>
-                                            <td className="p-4">
-                                                <EditableInput
-                                                    value={row.receptivos}
-                                                    onChange={val => handleInputChange(activeTab, type, 'receptivos', val)}
-                                                    prefix="$"
-                                                />
-                                            </td>
-                                            <td className="p-6">
-                                                <span className="text-xs font-mono text-slate-300 font-bold">$ {Math.round(costoPT).toLocaleString()}</span>
-                                            </td>
-                                            <td className="p-4 w-28">
-                                                <EditableInput
-                                                    value={row.markup}
-                                                    onChange={val => handleInputChange(activeTab, type, 'markup', val)}
-                                                    suffix="%"
-                                                />
-                                            </td>
-                                            <td className="p-4">
-                                                <EditableInput
-                                                    value={row.tiquete}
-                                                    onChange={val => handleInputChange(activeTab, type, 'tiquete', val)}
-                                                    prefix="$"
-                                                />
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-col gap-1">
-                                                    <EditableInput
-                                                        value={row.adminFeeNet}
-                                                        onChange={val => handleInputChange(activeTab, type, 'adminFeeNet', val)}
-                                                        prefix="N"
-                                                    />
-                                                    <EditableInput
-                                                        value={row.adminFeeIVA}
-                                                        onChange={val => handleInputChange(activeTab, type, 'adminFeeIVA', val)}
-                                                        prefix="I"
-                                                    />
-                                                </div>
-                                            </td>
-                                            <td className="p-6 text-right bg-lime-500/[0.03]">
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-lg font-black text-lime-400 font-mono tracking-tighter">
-                                                        $ {Math.round(totalVenta).toLocaleString()}
-                                                    </span>
-                                                    {activeTab.includes('INTERNACIONAL') && (
-                                                        <span className="text-[10px] font-bold text-lime-600/70 font-mono mt-0.5">
-                                                            ≈ $ {Math.round(totalVentaCOP).toLocaleString()} COP
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </tr>
                             </tbody>
                         </table>
                     </div>
