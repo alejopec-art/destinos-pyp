@@ -12,8 +12,9 @@ import {
     ShieldCheck, Users, User, DollarSign, FileCheck, FileText, LayoutDashboard,
     Calendar, Anchor, MapPin, Utensils, Wine, Music, AlertTriangle, Check,
     Trash2, Save, FileDown, Lock, Menu, X, Camera, Key, PieChart, RefreshCcw, Baby,
-    Image as ImageIcon, CalendarHeart, Hotel, HeartHandshake, Zap, Award, Trophy
+    Image as ImageIcon, CalendarHeart, Hotel, HeartHandshake, Zap, Award, Trophy, Calculator
 } from 'lucide-react';
+
 import { ERP } from '../../services/mockERP';
 import { Folios, getSubKeyFromTab } from '../../services/foliosApi';
 import { QuotesApi } from '../../services/quotesApi';

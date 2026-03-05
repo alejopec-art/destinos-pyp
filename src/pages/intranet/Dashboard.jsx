@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Palmtree, Briefcase, Calculator, LayoutDashboard, Plus, ArrowRight, LogOut, Calendar, Gift, Plane } from 'lucide-react';
+import { Palmtree, Briefcase, Calculator, LayoutDashboard, Plus, ArrowRight, LogOut, Calendar, Gift, Plane, Globe } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import TrmMonitor from '../../components/TrmMonitor';
 import TeamMonitor from './TeamMonitor';
@@ -22,6 +22,13 @@ const Dashboard = () => {
             desc: "Servicios para empresas y eventos ejecutivos.",
             color: "from-blue-500 to-blue-700",
             link: "/intranet/corporativo"
+        },
+        {
+            title: "Producto",
+            icon: <Globe className="w-10 h-10" />,
+            desc: "Motor de costeos y fichas técnicas.",
+            color: "from-lime-500 to-green-700",
+            link: "/intranet/producto"
         },
         {
             title: "Contabilidad",
@@ -153,7 +160,7 @@ const Dashboard = () => {
                     <TrmMonitor />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 max-w-7xl mx-auto">
                     {modules.map((mod, idx) => (
                         <Link to={mod.link} key={idx} className="block group h-full">
                             <motion.div
