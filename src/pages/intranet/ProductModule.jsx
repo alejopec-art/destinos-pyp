@@ -49,6 +49,11 @@ const INITIAL_TAB_DATA = {
     destination: '',
     trm: 4000,
     nights: 1,
+    planIncluye: "• Alojamiento\n• Desayuno tipo buffet\n• Impuestos hoteleros\n• Tarjeta de asistencia medica\n\nInformacion Importante: Menores de 0 a 1.99 años gratis (INF).\nMenores entre 2 y 11.99 años (CHD) gratis en alojamiento (máximo 2) compartiendo habitación sus padres, cancelan desayunos y consumos directamente en el hotel.\nA partir de 12 años cumplidos pagan tarifa de adulto.",
+    planNoIncluye: "* Gastos y/o servicios no especificados en el plan",
+    politicas: "Toda habitación cancelada 24 horas antes de la fecha de llegada, estará sujeta al cargo de una noche. En caso de NO SHOW se cobrará el 100% de la primera noche de alojamiento.",
+    vigenciaVenta: "XXXXXXXXXXXXXXXXXXXX",
+    vigenciaViaje: "XXXXXXXXXXXXXXXXXXXX",
     rows: ACCOMMODATIONS.reduce((acc, col) => ({
         ...acc,
         [col.id]: { ...INITIAL_ROW }
@@ -140,6 +145,13 @@ const ProductModule = () => {
                     }
                 }
             }
+        }));
+    };
+
+    const handleTabFieldChange = (tabId, field, value) => {
+        setData(prev => ({
+            ...prev,
+            [tabId]: { ...prev[tabId], [field]: value }
         }));
     };
 
@@ -368,95 +380,165 @@ const ProductModule = () => {
                     </div>
                 </div>
 
-                {/* Main Grid: Calculator Matrix (10x18 exactly like Excel) */}
-                <div className="lg:col-span-12 xl:col-span-9 overflow-x-auto custom-scrollbar pb-4">
-                    <div className="min-w-[1100px] bg-[#0d0d0f]/90 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative">
-                        <table className="w-full border-collapse text-left">
-                            <thead className="bg-[#0a0a0c]">
-                                <tr>
-                                    <th className="p-3 border-r border-b border-white/5 text-[10px] uppercase font-black tracking-widest text-slate-500 w-[200px]">
-                                        <div className="flex flex-col">
-                                            <span className="text-blue-500">Matriz de Costeo</span>
-                                            <span className="text-[8px] text-slate-600 tracking-tighter">Excel Replica 1:1</span>
-                                        </div>
-                                    </th>
-                                    {ACCOMMODATIONS.map(col => (
-                                        <th key={col.id} className={`p-2 border-r border-b border-white/5 text-center align-middle w-[90px] ${col.bgHeader}`}>
-                                            <div className="flex flex-col items-center justify-center">
-                                                <span className="text-[10px] font-black uppercase tracking-tight leading-tight">{col.label}</span>
-                                                {col.sub && <span className="text-[9px] font-bold uppercase tracking-widest leading-none mt-0.5">{col.sub}</span>}
+                {/* Main Content Area (Text Blocks & Calculator Matrix) */}
+                <div className="lg:col-span-12 xl:col-span-9 flex flex-col gap-6">
+
+                    {/* Info Blocks (Plan Incluye, No Incluye, etc.) */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left Info Column */}
+                        <div className="flex flex-col gap-4">
+                            <div className="bg-[#0d0d0f]/80 backdrop-blur-xl border border-blue-500/20 rounded-2xl overflow-hidden shadow-lg">
+                                <div className="bg-blue-500/10 p-3 border-b border-blue-500/20 text-center">
+                                    <h4 className="text-[11px] font-black text-blue-400 uppercase tracking-widest">Plan Incluye</h4>
+                                </div>
+                                <textarea
+                                    value={data[activeTab].planIncluye}
+                                    onChange={e => handleTabFieldChange(activeTab, 'planIncluye', e.target.value)}
+                                    className="w-full h-44 bg-transparent text-xs text-slate-300 p-4 outline-none resize-none focus:bg-white/5 transition-colors font-medium leading-relaxed"
+                                    placeholder="Detalles de lo que incluye el plan..."
+                                />
+                            </div>
+                            <div className="bg-[#0d0d0f]/80 backdrop-blur-xl border border-blue-500/20 rounded-2xl overflow-hidden shadow-lg">
+                                <div className="bg-blue-500/10 p-3 border-b border-blue-500/20 text-center">
+                                    <h4 className="text-[11px] font-black text-blue-400 uppercase tracking-widest">Vigencia de Venta</h4>
+                                </div>
+                                <input
+                                    value={data[activeTab].vigenciaVenta}
+                                    onChange={e => handleTabFieldChange(activeTab, 'vigenciaVenta', e.target.value)}
+                                    className="w-full bg-transparent text-xs text-center text-slate-300 p-3 outline-none focus:bg-white/5 transition-colors font-bold tracking-widest"
+                                    placeholder="Ej: HASTA OCTUBRE 2026"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Right Info Column */}
+                        <div className="flex flex-col gap-4">
+                            <div className="bg-[#0d0d0f]/80 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden shadow-lg">
+                                <div className="bg-cyan-500/10 p-3 border-b border-cyan-500/20 text-center">
+                                    <h4 className="text-[11px] font-black text-cyan-400 uppercase tracking-widest">Plan No Incluye</h4>
+                                </div>
+                                <textarea
+                                    value={data[activeTab].planNoIncluye}
+                                    onChange={e => handleTabFieldChange(activeTab, 'planNoIncluye', e.target.value)}
+                                    className="w-full h-[5.5rem] bg-transparent text-xs text-slate-300 p-4 outline-none resize-none focus:bg-white/5 transition-colors font-medium leading-relaxed"
+                                    placeholder="Detalles de lo que NO incluye el plan..."
+                                />
+                            </div>
+                            <div className="bg-[#0d0d0f]/80 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden shadow-lg">
+                                <div className="bg-cyan-500/10 p-3 border-b border-cyan-500/20 text-center">
+                                    <h4 className="text-[11px] font-black text-cyan-400 uppercase tracking-widest">Políticas de Cancelación Y/O No Show</h4>
+                                </div>
+                                <textarea
+                                    value={data[activeTab].politicas}
+                                    onChange={e => handleTabFieldChange(activeTab, 'politicas', e.target.value)}
+                                    className="w-full h-[5.5rem] bg-transparent text-xs text-slate-300 p-4 outline-none resize-none focus:bg-white/5 transition-colors font-medium leading-relaxed"
+                                    placeholder="Políticas de cancelación..."
+                                />
+                            </div>
+                            <div className="bg-[#0d0d0f]/80 backdrop-blur-xl border border-cyan-500/20 rounded-2xl overflow-hidden shadow-lg">
+                                <div className="bg-cyan-500/10 p-3 border-b border-cyan-500/20 text-center">
+                                    <h4 className="text-[11px] font-black text-cyan-400 uppercase tracking-widest">Vigencia de Viaje</h4>
+                                </div>
+                                <input
+                                    value={data[activeTab].vigenciaViaje}
+                                    onChange={e => handleTabFieldChange(activeTab, 'vigenciaViaje', e.target.value)}
+                                    className="w-full bg-transparent text-xs text-center text-slate-300 p-3 outline-none focus:bg-white/5 transition-colors font-bold tracking-widest"
+                                    placeholder="Ej: HASTA DICIEMBRE 2026"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Matrix (10x18 exactly like Excel) */}
+                    <div className="overflow-x-auto custom-scrollbar pb-4">
+                        <div className="min-w-[1100px] bg-[#0d0d0f]/90 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative">
+                            <table className="w-full border-collapse text-left">
+                                <thead className="bg-[#0a0a0c]">
+                                    <tr>
+                                        <th className="p-3 border-r border-b border-white/5 text-[10px] uppercase font-black tracking-widest text-slate-500 w-[200px]">
+                                            <div className="flex flex-col">
+                                                <span className="text-blue-500">Matriz de Costeo</span>
+                                                <span className="text-[8px] text-slate-600 tracking-tighter">Excel Replica 1:1</span>
                                             </div>
                                         </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="bg-[#0f0f13]">
-                                {/* 1. Tarifa a Cobrar */}
-                                <tr className="bg-blue-600/10 hover:bg-blue-600/20 transition-colors">
-                                    <td className="p-3 border-r border-b border-white/5 font-black text-[10px] text-blue-400 uppercase tracking-widest pl-4 whitespace-nowrap">
-                                        Tarifa a Cobrar por Persona
-                                    </td>
-                                    {ACCOMMODATIONS.map(col => (
-                                        <td key={`${col.id}-tarifa`} className="p-1 text-center border-r border-b border-white/5 relative">
-                                            <EditableInput
-                                                value={data[activeTab].rows[col.id].tarifaCobrar}
-                                                onChange={val => handleInputChange(activeTab, col.id, 'tarifaCobrar', val)}
-                                                prefix="$"
-                                                className="!bg-blue-900/30 !text-blue-300 !border-blue-500/30"
-                                            />
+                                        {ACCOMMODATIONS.map(col => (
+                                            <th key={col.id} className={`p-2 border-r border-b border-white/5 text-center align-middle w-[90px] ${col.bgHeader}`}>
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <span className="text-[10px] font-black uppercase tracking-tight leading-tight">{col.label}</span>
+                                                    {col.sub && <span className="text-[9px] font-bold uppercase tracking-widest leading-none mt-0.5">{col.sub}</span>}
+                                                </div>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-[#0f0f13]">
+                                    {/* 1. Tarifa a Cobrar */}
+                                    <tr className="bg-blue-600/10 hover:bg-blue-600/20 transition-colors">
+                                        <td className="p-3 border-r border-b border-white/5 font-black text-[10px] text-blue-400 uppercase tracking-widest pl-4 whitespace-nowrap">
+                                            Tarifa a Cobrar por Persona
                                         </td>
-                                    ))}
-                                </tr>
+                                        {ACCOMMODATIONS.map(col => (
+                                            <td key={`${col.id}-tarifa`} className="p-1 text-center border-r border-b border-white/5 relative">
+                                                <EditableInput
+                                                    value={data[activeTab].rows[col.id].tarifaCobrar}
+                                                    onChange={val => handleInputChange(activeTab, col.id, 'tarifaCobrar', val)}
+                                                    prefix="$"
+                                                    className="!bg-blue-900/30 !text-blue-300 !border-blue-500/30"
+                                                />
+                                            </td>
+                                        ))}
+                                    </tr>
 
-                                {/* 2 & 3. Tiquete y TA (Top section, editable) */}
-                                {renderInputRow("Valor del Tiquete", "tiqueteTop", "hover:bg-white/[0.02]", "")}
-                                {renderInputRow("TA + FEE con Iva incluido", "taFeeTop", "hover:bg-white/[0.02]", "")}
+                                    {/* 2 & 3. Tiquete y TA (Top section, editable) */}
+                                    {renderInputRow("Valor del Tiquete", "tiqueteTop", "hover:bg-white/[0.02]", "")}
+                                    {renderInputRow("TA + FEE con Iva incluido", "taFeeTop", "hover:bg-white/[0.02]", "")}
 
-                                {/* 4 & 5. Costos Calculados */}
-                                {renderCalcRow("Valor Porcion terrestre", "valorPT", "bg-white/[0.03]", "text-slate-300", "text-slate-400")}
-                                {renderCalcRow("valor incremento TC 5%", "incrementoTC", "bg-white/[0.03]", "text-slate-400", "text-slate-500")}
+                                    {/* 4 & 5. Costos Calculados */}
+                                    {renderCalcRow("Valor Porcion terrestre", "valorPT", "bg-white/[0.03]", "text-slate-300", "text-slate-400")}
+                                    {renderCalcRow("valor incremento TC 5%", "incrementoTC", "bg-white/[0.03]", "text-slate-400", "text-slate-500")}
 
-                                {/* 6. Precio Total (Naranja) */}
-                                {renderCalcRow("precio total del Paquete", "precioTotal", "bg-orange-500/10", "text-orange-400 !text-sm", "text-orange-500")}
+                                    {/* 6. Precio Total (Naranja) */}
+                                    {renderCalcRow("precio total del Paquete", "precioTotal", "bg-orange-500/10", "text-orange-400 !text-sm", "text-orange-500")}
 
-                                {/* 7, 8 & 9. Desglose Tiquetes y Admin */}
-                                {renderInputRow("tiquete (NETA)", "tiqueteNeto", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
-                                {renderInputRow("Tarifa Administrativa con iva", "tarifaAdminIva", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
-                                {renderInputRow("Fee de Emision", "feeEmision", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
+                                    {/* 7, 8 & 9. Desglose Tiquetes y Admin */}
+                                    {renderInputRow("tiquete (NETA)", "tiqueteNeto", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
+                                    {renderInputRow("Tarifa Administrativa con iva", "tarifaAdminIva", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
+                                    {renderInputRow("Fee de Emision", "feeEmision", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
 
-                                {/* 10 - 15. Costeos Directos (Amarillo/Verde) */}
-                                {renderInputRow("Asistencia medica", "asistencia", "bg-blue-900/10 hover:bg-blue-900/20", "!bg-blue-900/20 !text-blue-300 !border-blue-500/20", "text-blue-400")}
-                                {renderInputRow("Tarifa de alojamiento", "alojamiento", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
-                                {renderInputRow("Iva de Alojamiento", "ivaAlojamiento", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
-                                {renderInputRow("Seguro Hotelero", "seguroHotelero", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
-                                {renderInputRow("Traslados", "traslados", "bg-green-500/10 hover:bg-green-500/20", "!bg-green-500/20 !text-green-400 !border-green-500/30", "text-green-500")}
-                                {renderInputRow("Receptivos", "receptivos", "bg-green-500/10 hover:bg-green-500/20", "!bg-green-500/20 !text-green-400 !border-green-500/30", "text-green-500")}
+                                    {/* 10 - 15. Costeos Directos (Amarillo/Verde) */}
+                                    {renderInputRow("Asistencia medica", "asistencia", "bg-blue-900/10 hover:bg-blue-900/20", "!bg-blue-900/20 !text-blue-300 !border-blue-500/20", "text-blue-400")}
+                                    {renderInputRow("Tarifa de alojamiento", "alojamiento", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
+                                    {renderInputRow("Iva de Alojamiento", "ivaAlojamiento", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
+                                    {renderInputRow("Seguro Hotelero", "seguroHotelero", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
+                                    {renderInputRow("Traslados", "traslados", "bg-green-500/10 hover:bg-green-500/20", "!bg-green-500/20 !text-green-400 !border-green-500/30", "text-green-500")}
+                                    {renderInputRow("Receptivos", "receptivos", "bg-green-500/10 hover:bg-green-500/20", "!bg-green-500/20 !text-green-400 !border-green-500/30", "text-green-500")}
 
-                                {/* 16. Factor de Utilidad */}
-                                <tr className="bg-red-500/10 hover:bg-red-500/20 transition-colors">
-                                    <td className="p-3 border-r border-b border-white/5 font-black text-[10px] uppercase tracking-wider pl-4 whitespace-nowrap text-red-500 flex justify-between items-center">
-                                        Utilidad Porcion
-                                        <span className="text-[8px] text-red-500/50 block ml-2">(Ej. 0.8)</span>
-                                    </td>
-                                    {ACCOMMODATIONS.map(col => (
-                                        <td key={`${col.id}-utilidad`} className="p-1 text-center border-r border-b border-white/5 relative">
-                                            <EditableInput
-                                                value={data[activeTab].rows[col.id].utilidad}
-                                                onChange={val => handleInputChange(activeTab, col.id, 'utilidad', val)}
-                                                prefix=""
-                                                className="!bg-red-900/30 !text-red-400 !border-red-500/30"
-                                            />
+                                    {/* 16. Factor de Utilidad */}
+                                    <tr className="bg-red-500/10 hover:bg-red-500/20 transition-colors">
+                                        <td className="p-3 border-r border-b border-white/5 font-black text-[10px] uppercase tracking-wider pl-4 whitespace-nowrap text-red-500 flex justify-between items-center">
+                                            Utilidad Porcion
+                                            <span className="text-[8px] text-red-500/50 block ml-2">(Ej. 0.8)</span>
                                         </td>
-                                    ))}
-                                </tr>
+                                        {ACCOMMODATIONS.map(col => (
+                                            <td key={`${col.id}-utilidad`} className="p-1 text-center border-r border-b border-white/5 relative">
+                                                <EditableInput
+                                                    value={data[activeTab].rows[col.id].utilidad}
+                                                    onChange={val => handleInputChange(activeTab, col.id, 'utilidad', val)}
+                                                    prefix=""
+                                                    className="!bg-red-900/30 !text-red-400 !border-red-500/30"
+                                                />
+                                            </td>
+                                        ))}
+                                    </tr>
 
-                                {/* 17. Utilidad PT (Naranja) */}
-                                {renderCalcRow("Utilidad Porcion Terrestre", "utilidadPT", "bg-orange-500/10", "text-orange-400", "text-orange-500")}
+                                    {/* 17. Utilidad PT (Naranja) */}
+                                    {renderCalcRow("Utilidad Porcion Terrestre", "utilidadPT", "bg-orange-500/10", "text-orange-400", "text-orange-500")}
 
-                                {/* 18. UTILIDAD ADICIONAL (Verde exito / Rojo perdida) */}
-                                {renderCalcRow("UTILIDAD ADICIONAL", "utilidadAdicional", "bg-black", "text-emerald-400 !text-[13px]", "text-white")}
-                            </tbody>
-                        </table>
+                                    {/* 18. UTILIDAD ADICIONAL (Verde exito / Rojo perdida) */}
+                                    {renderCalcRow("UTILIDAD ADICIONAL", "utilidadAdicional", "bg-black", "text-emerald-400 !text-[13px]", "text-white")}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
