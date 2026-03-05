@@ -22,6 +22,7 @@ import { generateConfirmationPdf, generateQuotePdf, generateVoucherPdf, generate
 import { compressImage, processImageUpload, IMAGE_RECOMMENDATIONS } from '../../utils/image';
 import { getProcessStep, PROCESS_STEPS } from '../../utils/status';
 import { supabase } from '../../services/supabaseClient';
+import ProductModule from './ProductModule';
 
 // Expose Monthly Report Generator
 if (typeof window !== 'undefined') {
@@ -255,7 +256,7 @@ const QuotesPage = () => {
         const [loading, setLoading] = useState(false);
         const [error, setError] = useState('');
         const [reportPeriod, setReportPeriod] = useState('month'); // daily, weekly, month, year, all
-        const [showGlobal, setShowGlobal] = useState(user?.role === 'admin' || user?.role === 'manager');
+        const [showGlobal, setShowGlobal] = useState(true);
         const [viewMode, setViewMode] = useState('standard'); // standard, metrics
         const [filterType, setFilterType] = useState('all');
         const [filterStep, setFilterStep] = useState('all');
@@ -702,28 +703,28 @@ const QuotesPage = () => {
                         <div className="relative z-10">
                             <div className="flex justify-between items-start mb-2">
                                 <p className="text-blue-100 text-[10px] font-black uppercase tracking-widest opacity-80">Documentos Generados</p>
-                                {(user?.role === 'admin' || user?.role === 'manager') && (
-                                    <div className="flex gap-1 bg-black/20 p-0.5 rounded-full backdrop-blur-sm">
-                                        <button
-                                            onClick={() => { setShowGlobal(true); setViewMode('standard'); }}
-                                            className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter transition-all ${showGlobal && viewMode === 'standard' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-200 hover:text-white'}`}
-                                        >
-                                            Global
-                                        </button>
-                                        <button
-                                            onClick={() => { setShowGlobal(false); setViewMode('standard'); }}
-                                            className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter transition-all ${!showGlobal && viewMode === 'standard' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-200 hover:text-white'}`}
-                                        >
-                                            Mis Folios
-                                        </button>
+                                <div className="flex gap-1 bg-black/20 p-0.5 rounded-full backdrop-blur-sm">
+                                    <button
+                                        onClick={() => { setShowGlobal(true); setViewMode('standard'); }}
+                                        className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter transition-all ${showGlobal && viewMode === 'standard' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-200 hover:text-white'}`}
+                                    >
+                                        Global
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowGlobal(false); setViewMode('standard'); }}
+                                        className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter transition-all ${!showGlobal && viewMode === 'standard' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-200 hover:text-white'}`}
+                                    >
+                                        Mis Folios
+                                    </button>
+                                    {(user?.role === 'admin' || user?.role === 'manager') && (
                                         <button
                                             onClick={() => { setViewMode('metrics'); setShowGlobal(true); }}
                                             className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter transition-all ${viewMode === 'metrics' ? 'bg-amber-400 text-black shadow-sm' : 'text-amber-400/60 hover:text-amber-400'}`}
                                         >
                                             Métricas
                                         </button>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
 
                             </div>
                             <div className="flex items-baseline gap-2">
@@ -1144,6 +1145,7 @@ const QuotesPage = () => {
         { id: 'billing', label: 'Facturación', icon: Receipt, desc: 'Liquidación Operadores' },
         { id: 'voucher', label: 'Voucher', icon: FileSpreadsheet, desc: 'Generación Excel' },
         { id: 'reconfirm', label: 'Re-confirmación', icon: ClipboardList, desc: 'Checklist y Novedades' },
+        { id: 'producto', label: 'Producto', icon: Calculator, desc: 'Plantilla de Costeo' },
         { id: 'history', label: 'Historial', icon: LayoutDashboard, desc: 'Registro de cotizaciones' },
         { id: 'settings', label: 'Configuración', icon: Settings, desc: 'Perfil y Estadísticas' },
     ];
@@ -1265,6 +1267,7 @@ const QuotesPage = () => {
         const [clientPhoneC, setClientPhoneC] = useState('');
         const [clientSuggestions, setClientSuggestions] = useState([]);
         const [showSuggestions, setShowSuggestions] = useState(false);
+        const [activeStepTab, setActiveStepTab] = useState('confirmation'); // 'confirmation', 'payments', 'billing', 'voucher'
 
         const formatCOP = (val) => {
             if (!val) return '';
@@ -1413,33 +1416,37 @@ const QuotesPage = () => {
         const handleLoadByFolio = async () => {
             const folio = (folioInput || '').trim();
             if (!folio) return;
-            const data = await QuotesApi.getQuoteByFolio(folio);
-            if (data) {
-                if (data.serviceConfirmed !== undefined) setServiceConfirmed(!!data.serviceConfirmed);
-                if (data.serviceType) setServiceType(data.serviceType);
-                if (data.planType) setPlanType(data.planType);
-                if (data.totalPrice) setTotalPrice(String(data.totalPrice));
-                if (data.depositDate) setDepositDate(data.depositDate);
-                if (data.firstDeposit) setFirstDeposit(String(data.firstDeposit));
-                if (data.secondDeposit) setSecondDeposit(String(data.secondDeposit));
-                if (data.secondDepositDate) setSecondDepositDate(data.secondDepositDate);
-                if (data.currency) setCurrencyC(data.currency);
-                if (data.dueDate) setDueDate(data.dueDate);
-                if (data.hotelCategory) setHotelCategory(data.hotelCategory);
-                if (data.mealPlan) setMealPlan(data.mealPlan);
-                if (data.otherMealPlan) setOtherMealPlan(data.otherMealPlan);
-                if (data.clientName) setClientNameC(data.clientName);
-                if (data.clientEmail) setClientEmailC(data.clientEmail);
-                if (data.clientPhone) setClientPhoneC(data.clientPhone);
-                if (data.destination) setDestinationC(data.destination);
-                if (data.dateStart) setDateStartC(data.dateStart);
-                if (data.dateEnd) setDateEndC(data.dateEnd);
-                if (data.hotelName) setHotelNameC(data.hotelName);
+            try {
+                const data = await QuotesApi.getQuoteByFolio(folio);
+                if (data) {
+                    if (data.serviceConfirmed !== undefined) setServiceConfirmed(!!data.serviceConfirmed);
+                    if (data.serviceType) setServiceType(data.serviceType);
+                    if (data.planType) setPlanType(data.planType);
+                    if (data.totalPrice) setTotalPrice(String(data.totalPrice));
+                    if (data.depositDate) setDepositDate(data.depositDate);
+                    if (data.firstDeposit) setFirstDeposit(String(data.firstDeposit));
+                    if (data.secondDeposit) setSecondDeposit(String(data.secondDeposit));
+                    if (data.secondDepositDate) setSecondDepositDate(data.secondDepositDate);
+                    if (data.currency) setCurrencyC(data.currency);
+                    if (data.dueDate) setDueDate(data.dueDate);
+                    if (data.hotelCategory) setHotelCategory(data.hotelCategory);
+                    if (data.mealPlan) setMealPlan(data.mealPlan);
+                    if (data.otherMealPlan) setOtherMealPlan(data.otherMealPlan);
+                    if (data.clientName) setClientNameC(data.clientName);
+                    if (data.clientEmail) setClientEmailC(data.clientEmail);
+                    if (data.clientPhone) setClientPhoneC(data.clientPhone);
+                    if (data.destination) setDestinationC(data.destination);
+                    if (data.dateStart) setDateStartC(data.dateStart);
+                    if (data.dateEnd) setDateEndC(data.dateEnd);
+                    if (data.hotelName) setHotelNameC(data.hotelName);
 
-                if (Array.isArray(data.flightRows) && data.flightRows.length) setFlightRows(data.flightRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
-                if (Array.isArray(data.passengerRows) && data.passengerRows.length) setPassengerRows(data.passengerRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
-                if (Array.isArray(data.serviceRows) && data.serviceRows.length) setServiceRows(data.serviceRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
-                setPreviewFolio(folio);
+                    if (Array.isArray(data.flightRows) && data.flightRows.length) setFlightRows(data.flightRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
+                    if (Array.isArray(data.passengerRows) && data.passengerRows.length) setPassengerRows(data.passengerRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
+                    if (Array.isArray(data.serviceRows) && data.serviceRows.length) setServiceRows(data.serviceRows.map((r, i) => ({ id: r.id || i + 1, ...r })));
+                    setPreviewFolio(folio);
+                }
+            } catch (err) {
+                console.error("Error loading folio:", err);
             }
         };
         const [isSaving, setIsSaving] = useState(false);
@@ -1598,578 +1605,294 @@ const QuotesPage = () => {
                             {serviceConfirmed && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <select value={serviceType} onChange={e => setServiceType(e.target.value)} className={`bg-slate-50 border rounded-xl p-3 text-slate-700 font-bold uppercase outline-none ${showConfirmErrors && !serviceType ? 'border-red-400' : 'border-slate-200'}`}>
-                                        <option value="">Seleccione Tipo</option>
-                                        <option value="nacional">Plan Nacional</option>
-                                        <option value="internacional">Plan Internacional</option>
-                                        <option value="terrestre">Porción Terrestre</option>
+                                        <option value="">Tipo de Servicio</option>
+                                        <option value="nacional">Nacional</option>
+                                        <option value="internacional">Internacional</option>
+                                        <option value="terrestre">Solo Terrestre</option>
+                                        <option value="hotel">Solo Hotel</option>
                                         <option value="auto">Alquiler de Auto</option>
-                                        <option value="hotel">Hotel</option>
                                         <option value="crucero">Crucero</option>
-                                        <option value="otros">Otros</option>
                                     </select>
-                                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-700 text-[11px] font-bold uppercase tracking-widest text-center flex flex-col items-center gap-1">
-                                        <span className="text-slate-500 font-black">Asesor Comercial Responsable:</span>
-                                        <span className="text-blue-900 text-sm">{advisorName}</span>
-                                    </div>
                                 </div>
                             )}
                         </div>
-                        <div className="md:col-span-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                            <div className="grid grid-cols-2 gap-3">
-                                <input value={planType} onChange={e => setPlanType(e.target.value)} placeholder="Tipo de Plan" className={`bg-slate-50 border rounded-xl p-3 text-slate-700 font-bold uppercase outline-none col-span-2 ${showConfirmErrors && !planType ? 'border-red-400' : 'border-slate-200'}`} />
-                                <div className={`bg-slate-50 border rounded-xl p-3 ${showConfirmErrors && !totalPrice ? 'border-red-400' : 'border-slate-200'} relative`}>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <div className="text-[10px] text-slate-400 uppercase font-bold">Precio Total ({currencyC})</div>
-                                        <div className="flex bg-slate-200 rounded-lg p-0.5">
-                                            <button onClick={() => setCurrencyC('USD')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${currencyC === 'USD' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>USD</button>
-                                            <button onClick={() => setCurrencyC('COP')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${currencyC === 'COP' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>COP</button>
-                                        </div>
-                                    </div>
-                                    <input
-                                        type="text"
-                                        value={currencyC === 'COP' ? formatCOP(totalPrice) : totalPrice}
-                                        onChange={e => {
-                                            const raw = e.target.value.replace(/\D/g, '');
-                                            setTotalPrice(currencyC === 'COP' ? raw : e.target.value);
-                                        }}
-                                        placeholder="0.00"
-                                        className="w-full bg-transparent font-black text-xl text-slate-800 outline-none"
-                                    />
-                                </div>
-                                <div className={`${dueDate && new Date(dueDate) < new Date() ? 'ring-2 ring-red-400 rounded-xl' : ''}`}>
-                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                                        <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Fecha Límite Pago Total</div>
-                                        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={`w-full bg-transparent font-bold text-slate-700 outline-none ${showConfirmErrors && !dueDate ? 'text-red-500' : ''}`} />
-                                    </div>
-                                </div>
+                        <div className="md:col-span-6 flex flex-col justify-center">
+                            <div className="flex bg-slate-100 p-1 rounded-2xl w-full border border-slate-200 shadow-inner">
+                                <button onClick={() => setActiveStepTab('confirmation')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${activeStepTab === 'confirmation' ? 'bg-white text-blue-600 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>1. Detalles</button>
+                                <button onClick={() => setActiveStepTab('payments')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${activeStepTab === 'payments' ? 'bg-white text-blue-600 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>2. Pagos</button>
+                                <button onClick={() => setActiveStepTab('billing')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${activeStepTab === 'billing' ? 'bg-white text-blue-600 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>3. Liquidación</button>
+                                <button onClick={() => setActiveStepTab('voucher')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all ${activeStepTab === 'voucher' ? 'bg-white text-blue-600 shadow-md scale-[1.02]' : 'text-slate-400 hover:text-slate-600'}`}>4. Voucher</button>
                             </div>
                         </div>
                     </div>
 
-                    {/* 2. Datos del Solicitante y Viaje */}
-                    <div className="relative z-10 p-8 grid grid-cols-1 md:grid-cols-12 gap-6 bg-slate-50/30 border-t border-slate-100">
-                        <div className="md:col-span-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all group relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 opacity-10 rounded-bl-full"></div>
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
-                                    <Users className="w-4 h-4" />
+                    {activeStepTab === 'confirmation' && (
+                        <div className="animate-fade-in">
+                            {/* 1. Detalles del Plan */}
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
+                                <div className="md:col-span-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <select value={serviceType} onChange={e => setServiceType(e.target.value)} className={`bg-slate-50 border rounded-xl p-3 text-slate-700 font-bold uppercase outline-none ${showConfirmErrors && !serviceType ? 'border-red-400' : 'border-slate-200'}`}>
+                                            <option value="">Seleccione Tipo</option>
+                                            <option value="nacional">Plan Nacional</option>
+                                            <option value="internacional">Plan Internacional</option>
+                                            <option value="terrestre">Porción Terrestre</option>
+                                            <option value="auto">Alquiler de Auto</option>
+                                            <option value="hotel">Hotel</option>
+                                            <option value="crucero">Crucero</option>
+                                            <option value="otros">Otros</option>
+                                        </select>
+                                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-blue-700 text-[11px] font-bold uppercase tracking-widest text-center flex flex-col items-center gap-1">
+                                            <span className="text-slate-500 font-black">Asesor Comercial Responsable:</span>
+                                            <span className="text-blue-900 text-sm">{advisorName}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Datos del Solicitante</span>
-                            </div>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    className="w-full bg-slate-50/50 outline-none font-bold text-slate-700 uppercase mb-1 text-sm border-b border-slate-200 focus:border-blue-300 pb-1"
-                                    value={clientNameC}
-                                    onChange={e => handleSearchClients(e.target.value)}
-                                    placeholder="NOMBRE COMPLETO DEL CLIENTE"
-                                />
-                                {showSuggestions && (
-                                    <div className="absolute z-[60] left-0 right-0 top-full bg-white border border-slate-200 shadow-xl rounded-xl mt-1 overflow-hidden">
-                                        {clientSuggestions.map((s, i) => (
-                                            <button
-                                                key={i}
-                                                className="w-full text-left px-4 py-2 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors"
-                                                onClick={() => {
-                                                    setClientNameC(s.name);
-                                                    setClientEmailC(s.email);
-                                                    setClientPhoneC(s.phone);
-                                                    setShowSuggestions(false);
+                                <div className="md:col-span-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input value={planType} onChange={e => setPlanType(e.target.value)} placeholder="Tipo de Plan" className={`bg-slate-50 border rounded-xl p-3 text-slate-700 font-bold uppercase outline-none col-span-2 ${showConfirmErrors && !planType ? 'border-red-400' : 'border-slate-200'}`} />
+                                        <div className={`bg-slate-50 border rounded-xl p-3 ${showConfirmErrors && !totalPrice ? 'border-red-400' : 'border-slate-200'} relative`}>
+                                            <div className="flex justify-between items-center mb-1">
+                                                <div className="text-[10px] text-slate-400 uppercase font-bold">Precio Total ({currencyC})</div>
+                                                <div className="flex bg-slate-200 rounded-lg p-0.5">
+                                                    <button onClick={() => setCurrencyC('USD')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${currencyC === 'USD' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>USD</button>
+                                                    <button onClick={() => setCurrencyC('COP')} className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${currencyC === 'COP' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>COP</button>
+                                                </div>
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={currencyC === 'COP' ? formatCOP(totalPrice) : totalPrice}
+                                                onChange={e => {
+                                                    const raw = e.target.value.replace(/\D/g, '');
+                                                    setTotalPrice(currencyC === 'COP' ? raw : e.target.value);
                                                 }}
-                                            >
-                                                <p className="font-bold text-xs text-slate-700">{s.name}</p>
-                                                {s.email && <p className="text-[10px] text-slate-400">{s.email}</p>}
-                                            </button>
-                                        ))}
+                                                placeholder="0.00"
+                                                className="w-full bg-transparent font-black text-xl text-slate-800 outline-none"
+                                            />
+                                        </div>
+                                        <div className={`${dueDate && new Date(dueDate) < new Date() ? 'ring-2 ring-red-400 rounded-xl' : ''}`}>
+                                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Fecha Límite Pago Total</div>
+                                                <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className={`w-full bg-transparent font-bold text-slate-700 outline-none ${showConfirmErrors && !dueDate ? 'text-red-500' : ''}`} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 2. Datos del Solicitante y Viaje */}
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-slate-50/30 border-t border-slate-100 p-8 rounded-2xl mb-8">
+                                <div className="md:col-span-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all group relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 opacity-10 rounded-bl-full"></div>
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-600">
+                                            <Users className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Datos del Solicitante</span>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            className="w-full bg-slate-50/50 outline-none font-bold text-slate-700 uppercase mb-1 text-sm border-b border-slate-200 focus:border-blue-300 pb-1"
+                                            value={clientNameC}
+                                            onChange={e => handleSearchClients(e.target.value)}
+                                            placeholder="NOMBRE COMPLETO DEL CLIENTE"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <input type="email" className="w-full bg-slate-50/50 outline-none text-xs text-slate-600 lowercase placeholder-slate-400 border-b border-slate-200 focus:border-blue-300 pb-1" value={clientEmailC} onChange={e => setClientEmailC(e.target.value)} placeholder="Correo electrónico" />
+                                        <input type="tel" className="w-full bg-slate-50/50 outline-none text-xs text-slate-600 placeholder-slate-400 border-b border-slate-200 focus:border-blue-300 pb-1" value={clientPhoneC || ''} onChange={e => setClientPhoneC(e.target.value)} placeholder="Celular de contacto" />
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-5 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all group">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                            <MapPin className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Detalles del Viaje</span>
+                                    </div>
+                                    <input type="text" className="w-full bg-slate-50/50 outline-none font-bold text-slate-800 uppercase mb-3 text-lg border-b border-slate-200 focus:border-emerald-300 pb-1" value={destinationC} onChange={e => setDestinationC(e.target.value.toUpperCase())} placeholder="DESTINO DEL VIAJE" />
+
+                                    <div className="grid grid-cols-2 gap-4 mt-2">
+                                        <div>
+                                            <label className="text-[9px] text-slate-400 uppercase font-black tracking-wider block mb-1">Fecha de Inicio</label>
+                                            <input type="date" className="w-full bg-slate-50/50 outline-none text-sm text-slate-700 font-medium border-b border-slate-200 focus:border-emerald-300 pb-1" value={dateStartC || ''} onChange={e => setDateStartC(e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <label className="text-[9px] text-slate-400 uppercase font-black tracking-wider block mb-1">Fecha Final</label>
+                                            <input type="date" className="w-full bg-slate-50/50 outline-none text-sm text-slate-700 font-medium border-b border-slate-200 focus:border-emerald-300 pb-1" value={dateEndC || ''} onChange={e => setDateEndC(e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-3 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all group">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                                            <ShieldCheck className="w-4 h-4" />
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Asesor Responsable</span>
+                                    </div>
+                                    <input type="text" readOnly className="w-full bg-transparent outline-none font-black text-slate-800 uppercase mb-1" value={advisorName} />
+                                    <div className="text-xs text-slate-500 font-medium">{advisorRole}</div>
+                                </div>
+                            </div>
+
+                            {/* 3. Detalles de Alojamiento y Servicios */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                                {includes.hotel && (
+                                    <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-orange-400 to-red-500 group-hover:w-2 transition-all"></div>
+                                        <h3 className="font-bold text-slate-800 text-lg uppercase flex items-center gap-2 mb-4">
+                                            <Briefcase className="w-5 h-5 text-orange-500" /> Alojamiento
+                                        </h3>
+                                        <input type="text" value={hotelNameC} onChange={e => setHotelNameC(e.target.value)} className="w-full font-black text-xl text-slate-700 outline-none uppercase placeholder-slate-300 border-b border-slate-200 focus:border-orange-400 mb-4" placeholder="NOMBRE DEL HOTEL" />
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <div>
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold mb-2 block">Planes de Alimentación (Múltiple)</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['DESAYUNO', 'TODO INCLUIDO', 'MEDIA PENSION', 'PENSION COMPLETA', 'SOLO ALOJAMIENTO', 'OTRO'].map(plan => (
+                                                        <button
+                                                            key={plan}
+                                                            onClick={() => {
+                                                                const current = mealPlan?.split(',').map(s => s.trim()).filter(Boolean) || [];
+                                                                const next = current.includes(plan) ? current.filter(s => s !== plan) : [...current, plan];
+                                                                setMealPlan(next.join(', '));
+                                                            }}
+                                                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${mealPlan?.includes(plan) ? 'bg-orange-500 text-white border-orange-600 shadow-md' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-orange-300'}`}
+                                                        >
+                                                            {plan}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Categoría</label>
+                                                <input value={hotelCategory} onChange={e => setHotelCategory(e.target.value)} className="w-full bg-slate-50 border rounded-xl p-2 text-xs font-bold uppercase" placeholder="EJ: ESTÁNDAR" />
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
-                            </div>
-                            <div className="grid grid-cols-1 gap-3">
-                                <input type="email" className="w-full bg-slate-50/50 outline-none text-xs text-slate-600 lowercase placeholder-slate-400 border-b border-slate-200 focus:border-blue-300 pb-1" value={clientEmailC} onChange={e => setClientEmailC(e.target.value)} placeholder="Correo electrónico" />
-                                <input type="tel" className="w-full bg-slate-50/50 outline-none text-xs text-slate-600 placeholder-slate-400 border-b border-slate-200 focus:border-blue-300 pb-1" value={clientPhoneC || ''} onChange={e => setClientPhoneC(e.target.value)} placeholder="Celular de contacto" />
-                            </div>
-                        </div>
 
-                        <div className="md:col-span-5 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all group">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                    <MapPin className="w-4 h-4" />
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Detalles del Viaje</span>
-                            </div>
-                            <input type="text" className="w-full bg-slate-50/50 outline-none font-bold text-slate-800 uppercase mb-3 text-lg border-b border-slate-200 focus:border-emerald-300 pb-1" value={destinationC} onChange={e => setDestinationC(e.target.value.toUpperCase())} placeholder="DESTINO DEL VIAJE (EJ: ARUBA)" />
-
-                            <div className="grid grid-cols-2 gap-4 mt-2">
-                                <div>
-                                    <label className="text-[9px] text-slate-400 uppercase font-black tracking-wider block mb-1">Fecha de Inicio</label>
-                                    <input type="date" className="w-full bg-slate-50/50 outline-none text-sm text-slate-700 font-medium border-b border-slate-200 focus:border-emerald-300 pb-1" value={dateStartC || ''} onChange={e => setDateStartC(e.target.value)} />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] text-slate-400 uppercase font-black tracking-wider block mb-1">Fecha Final</label>
-                                    <input type="date" className="w-full bg-slate-50/50 outline-none text-sm text-slate-700 font-medium border-b border-slate-200 focus:border-emerald-300 pb-1" value={dateEndC || ''} onChange={e => setDateEndC(e.target.value)} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="md:col-span-3 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all group">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                                    <ShieldCheck className="w-4 h-4" />
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Asesor Responsable</span>
-                            </div>
-                            <input type="text" readOnly className="w-full bg-transparent outline-none font-black text-slate-800 uppercase mb-1" value={advisorName} />
-                            <div className="text-xs text-slate-500 font-medium">{advisorRole}</div>
-
-                            <div className="mt-5 pt-4 border-t border-slate-100">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Fecha Emisión</span>
-                                <p className="font-bold text-slate-700">{new Date().toLocaleDateString()}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. Detalles del Viaje & Alojamiento */}
-                    <div className="relative z-10 px-8 py-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {/* Alojamiento Card */}
-                            {includes.hotel && (
                                 <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-orange-400 to-red-500 group-hover:w-2 transition-all"></div>
-                                    <div className="flex justify-between items-start mb-6 pl-4">
-                                        <div>
-                                            <h3 className="font-bold text-slate-800 text-lg uppercase flex items-center gap-2">
-                                                <Briefcase className="w-5 h-5 text-orange-500" /> Alojamiento Confirmado
-                                            </h3>
-                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Detalles del Hotel</p>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <select
-                                                value={mealPlan}
-                                                onChange={e => setMealPlan(e.target.value)}
-                                                className="bg-orange-50 text-orange-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-orange-100 outline-none hover:bg-orange-100 transition-colors"
-                                            >
-                                                <option value="DESAYUNO">DESAYUNO</option>
-                                                <option value="DOS COMIDAS">DOS COMIDAS</option>
-                                                <option value="TRES COMIDAS">TRES COMIDAS</option>
-                                                <option value="TODO INCLUIDO">TODO INCLUIDO</option>
-                                                <option value="OTRO">OTRO</option>
-                                            </select>
-                                            {mealPlan === 'OTRO' && (
-                                                <input
-                                                    type="text"
-                                                    value={otherMealPlan}
-                                                    onChange={e => setOtherMealPlan(e.target.value.toUpperCase())}
-                                                    placeholder="ESPECIFIQUE..."
-                                                    className="w-32 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[9px] font-bold text-slate-700 outline-none focus:border-orange-400"
-                                                />
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="pl-4 space-y-4">
-                                        <div>
-                                            <input type="text" value={hotelNameC} onChange={e => setHotelNameC(e.target.value)} className="w-full font-black text-xl md:text-2xl text-slate-700 outline-none uppercase placeholder-slate-300 border-b border-transparent focus:border-orange-200 transition-all" placeholder="NOMBRE DEL HOTEL (EJ: HOTEL RIU PALACE)" />
-                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-tight mt-1">
-                                                (Hora Check-In (llegada): 03:00 p.m. Hora Check-Out (salida): 12:00 m)
-                                                <br />
-                                                <span className="font-semibold italic text-[9px] opacity-80">*Sujeto a cambios de acuerdo a políticas del hotel*</span>
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Categoría de Habitación</div>
-                                            <input value={hotelCategory} onChange={e => setHotelCategory(e.target.value)} className={`w-full bg-slate-50 rounded-xl p-3 text-xs text-slate-600 outline-none border ${showConfirmErrors && !hotelCategory ? 'border-red-400' : 'border-slate-100'}`} placeholder="EJ: SUPERIOR, SUITE, ESTÁNDAR" />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                                <span className="block text-[9px] text-slate-400 uppercase font-bold mb-1">Check-in</span>
-                                                <input type="date" className="bg-transparent font-bold text-slate-700 text-sm outline-none w-full" />
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-teal-500 group-hover:w-2 transition-all"></div>
+                                    <h3 className="font-bold text-slate-800 text-lg uppercase flex items-center gap-2 mb-4">
+                                        <MapPin className="w-5 h-5 text-emerald-500" /> Servicios Adicionales
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {serviceRows.map((sr) => (
+                                            <div key={sr.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                <input value={sr.type} onChange={e => setServiceField(sr.id, 'type', e.target.value)} className="w-full bg-transparent font-bold text-xs uppercase mb-1 outline-none" placeholder="TIPO SERVICIO (EJ: TRASLADO)" />
+                                                <textarea value={sr.description} onChange={e => setServiceField(sr.id, 'description', e.target.value)} className="w-full bg-transparent text-[10px] text-slate-500 outline-none resize-none h-12" placeholder="DESCRIPCIÓN..."></textarea>
                                             </div>
-                                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                                <span className="block text-[9px] text-slate-400 uppercase font-bold mb-1">Check-out</span>
-                                                <input type="date" className="bg-transparent font-bold text-slate-700 text-sm outline-none w-full" />
-                                            </div>
-                                        </div>
-                                        <textarea className="w-full bg-slate-50 rounded-xl p-3 text-xs text-slate-500 outline-none resize-none border border-slate-100 focus:border-orange-300 transition-colors h-20" placeholder="Observaciones del hotel..."></textarea>
+                                        ))}
+                                        <button onClick={addServiceRow} className="w-full py-2 border-2 border-dashed border-emerald-100 rounded-xl text-emerald-500 text-[10px] font-black uppercase hover:bg-emerald-50 transition-colors">+ Agregar Servicio</button>
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Servicios Adicionales Card */}
-                            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-teal-500 group-hover:w-2 transition-all"></div>
-                                <div className="flex justify-between items-start mb-6 pl-4">
-                                    <div>
-                                        <h3 className="font-bold text-slate-800 text-lg uppercase flex items-center gap-2">
-                                            <MapPin className="w-5 h-5 text-emerald-500" /> Servicios Adicionales
-                                        </h3>
-                                        <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Traslados / Tours / Excursiones</p>
-                                    </div>
-                                    <div className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-emerald-100">
-                                        Servicios en Destino
-                                    </div>
-                                </div>
-
-                                <div className="pl-4 space-y-6">
-                                    {serviceRows.map((sr, idx) => (
-                                        <div key={sr.id} className="relative p-4 bg-slate-50/50 rounded-2xl border border-slate-100 group/item">
-                                            {serviceRows.length > 1 && (
-                                                <button onClick={() => removeServiceRow(sr.id)} className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-100 text-red-500 flex items-center justify-center text-xs hover:bg-red-500 hover:text-white transition-all">×</button>
-                                            )}
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Tipo de Servicio</label>
-                                                    <select value={sr.type} onChange={e => setServiceField(sr.id, 'type', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none uppercase focus:border-emerald-400 transition-all">
-                                                        <option value="">Seleccione Tipo</option>
-                                                        <option value="traslado-in">Traslado In (Aeropuerto - Hotel)</option>
-                                                        <option value="traslado-out">Traslado Out (Hotel - Aeropuerto)</option>
-                                                        <option value="city-tour">City Tour</option>
-                                                        <option value="excursion-full">Excursión Full Day</option>
-                                                        <option value="excursion-half">Excursión Half Day</option>
-                                                        <option value="cena-show">Cena Show</option>
-                                                        <option value="actividad-extrema">Actividad Extrema</option>
-                                                        <option value="otros">Otros Servicios</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Nombre del Operador</label>
-                                                    <input value={sr.operator} onChange={e => setServiceField(sr.id, 'operator', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none uppercase focus:border-emerald-400 transition-all" placeholder="EJ: GRAY LINE, DESPEGAR" />
-                                                </div>
-                                                <div className="md:col-span-2">
-                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Descripción del Servicio</label>
-                                                    <textarea value={sr.description} onChange={e => setServiceField(sr.id, 'description', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-600 outline-none resize-none focus:border-emerald-400 transition-all h-20" placeholder="Detalle lo que incluye el servicio..."></textarea>
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Fecha y Hora de Encuentro</label>
-                                                    <input type="datetime-local" value={sr.dateTime} onChange={e => setServiceField(sr.id, 'dateTime', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none focus:border-emerald-400 transition-all" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] text-slate-400 uppercase font-black block mb-1">Lugar de Recogida</label>
-                                                    <input value={sr.meetingPoint} onChange={e => setServiceField(sr.id, 'meetingPoint', e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 outline-none uppercase focus:border-emerald-400 transition-all" placeholder="PUNTO DE ENCUENTRO" />
-                                                </div>
+                            {/* Nueva Sección: Itinerario de Vuelos */}
+                            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group mb-8">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-indigo-500 group-hover:w-2 transition-all"></div>
+                                <h3 className="font-bold text-slate-800 text-lg uppercase flex items-center gap-2 mb-4">
+                                    <Plane className="w-5 h-5 text-blue-500" /> Itinerario de Vuelos (Confirmado)
+                                </h3>
+                                <div className="space-y-4">
+                                    {flightRows.map((fr) => (
+                                        <div key={fr.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 relative group/row">
+                                            <div className="md:col-span-2">
+                                                <label className="text-[9px] text-slate-400 font-black uppercase mb-1 block">Vuelo / Aerolínea</label>
+                                                <input value={fr.flightNumber} onChange={e => setFlightField(fr.id, 'flightNumber', e.target.value)} className="w-full bg-transparent font-bold text-xs uppercase outline-none" placeholder="EJ: AV9344" />
+                                            </div>
+                                            <div className="md:col-span-3">
+                                                <label className="text-[9px] text-slate-400 font-black uppercase mb-1 block">Ruta (Origen - Destino)</label>
+                                                <input value={fr.route} onChange={e => setFlightField(fr.id, 'route', e.target.value)} className="w-full bg-transparent font-bold text-xs uppercase outline-none" placeholder="EJ: BOG - MDE" />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="text-[9px] text-slate-400 font-black uppercase mb-1 block">Fecha</label>
+                                                <input type="date" value={fr.date} onChange={e => setFlightField(fr.id, 'date', e.target.value)} className="w-full bg-transparent text-xs font-bold outline-none" />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="text-[9px] text-slate-400 font-black uppercase mb-1 block">Hora Salida</label>
+                                                <input type="time" value={fr.departureTime} onChange={e => setFlightField(fr.id, 'departureTime', e.target.value)} className="w-full bg-transparent text-xs font-black text-blue-600 outline-none" />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="text-[9px] text-slate-400 font-black uppercase mb-1 block">Hora Llegada</label>
+                                                <input type="time" value={fr.arrivalTime} onChange={e => setFlightField(fr.id, 'arrivalTime', e.target.value)} className="w-full bg-transparent text-xs font-black text-indigo-600 outline-none" />
+                                            </div>
+                                            <div className="md:col-span-1 flex items-center justify-end">
+                                                <button onClick={() => removeFlightRow(fr.id)} className="text-red-400 hover:text-red-600 font-bold text-lg">×</button>
                                             </div>
                                         </div>
                                     ))}
-                                    <button onClick={addServiceRow} className="w-full py-3 border-2 border-dashed border-emerald-100 rounded-2xl text-emerald-500 text-[10px] font-black uppercase tracking-widest hover:bg-emerald-50 hover:border-emerald-300 transition-all flex justify-center items-center gap-2">
-                                        + Agregar Otro Servicio
+                                    <button onClick={addFlightRow} className="w-full py-3 border-2 border-dashed border-blue-100 rounded-2xl text-blue-500 text-[10px] font-black uppercase hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
+                                        <Plus className="w-4 h-4" /> Agregar Trayecto Aéreo
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Vuelos Card */}
-                            {includes.air && (
-                                <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xl shadow-slate-200/50 relative overflow-hidden group">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-indigo-500 group-hover:w-2 transition-all"></div>
-                                    <div className="flex justify-between items-start mb-6 pl-4">
-                                        <div>
-                                            <h3 className="font-bold text-slate-800 text-lg uppercase flex items-center gap-2">
-                                                <Plane className="w-5 h-5 text-blue-500" /> Itinerario Aéreo
-                                            </h3>
-                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Vuelos Confirmados</p>
-                                        </div>
-                                        <div className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-blue-100">
-                                            Ida y Regreso
-                                        </div>
-                                    </div>
-
-                                    <div className="pl-2 space-y-4">
-                                        <div className="overflow-hidden rounded-xl border border-slate-200">
-                                            <table className="w-full text-left text-[11px]">
-                                                <thead className="bg-slate-100/50 text-slate-500 text-[10px] uppercase font-black tracking-widest border-b border-slate-200">
-                                                    <tr>
-                                                        <th className="p-4 text-center w-[25%]">Identificación</th>
-                                                        <th className="p-4 text-center w-[25%]">Pasajero</th>
-                                                        <th className="p-4 text-center w-[30%]">Itinerario</th>
-                                                        <th className="p-4 text-center w-[20%]">Observaciones</th>
-                                                        <th className="p-4 w-10"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-200">
-                                                    {flightRows.map(fr => (
-                                                        <tr key={fr.id} className="bg-white hover:bg-slate-50 transition-colors border-b border-slate-100">
-                                                            <td className="p-4">
-                                                                <div className="flex flex-col gap-2">
-                                                                    <input value={fr.airline} onChange={e => setFlightField(fr.id, 'airline', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 outline-none font-bold uppercase text-xs text-center focus:border-blue-500/50 transition-all" placeholder="AEROLÍNEA" />
-                                                                    <div className="grid grid-cols-2 gap-2">
-                                                                        <input value={fr.eticket} onChange={e => setFlightField(fr.id, 'eticket', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none font-mono text-[9px] text-center" placeholder="E-TICKET" />
-                                                                        <input value={fr.pnr} onChange={e => setFlightField(fr.id, 'pnr', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none font-mono text-[9px] uppercase text-center" placeholder="PNR" />
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="flex flex-col gap-2">
-                                                                    <input value={fr.passengerName} onChange={e => setFlightField(fr.id, 'passengerName', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 outline-none font-bold uppercase text-xs text-center focus:border-blue-500/50 transition-all" placeholder="NOMBRE PASAJERO" />
-                                                                    <input value={fr.passengerId} onChange={e => setFlightField(fr.id, 'passengerId', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 outline-none font-mono text-[9px] text-center" placeholder="DOCUMENTO ID" />
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <div className="flex flex-col gap-2">
-                                                                    <input value={fr.route} onChange={e => setFlightField(fr.id, 'route', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 outline-none font-bold uppercase text-xs text-center focus:border-blue-500/50 transition-all" placeholder="BOG-ADZ" />
-                                                                    <div className="grid grid-cols-3 gap-1">
-                                                                        <input value={fr.flightDate} onChange={e => setFlightField(fr.id, 'flightDate', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-1 outline-none text-[8px] text-center" placeholder="FECHA" />
-                                                                        <input value={fr.depTime} onChange={e => setFlightField(fr.id, 'depTime', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-1 outline-none text-[8px] text-center" placeholder="DEP" />
-                                                                        <input value={fr.arrTime} onChange={e => setFlightField(fr.id, 'arrTime', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-1 py-1 outline-none text-[8px] text-center" placeholder="ARR" />
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4">
-                                                                <textarea
-                                                                    value={fr.observaciones || ''}
-                                                                    onChange={e => setFlightField(fr.id, 'observaciones', e.target.value)}
-                                                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 outline-none text-[10px] text-slate-600 resize-none focus:border-blue-400/50 transition-colors"
-                                                                    placeholder="Observaciones del vuelo..."
-                                                                    rows={3}
-                                                                />
-                                                            </td>
-                                                            <td className="p-4 text-right">
-                                                                <button onClick={() => removeFlightRow(fr.id)} className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center font-bold text-lg">×</button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                            <button onClick={addFlightRow} className="w-full py-2 bg-slate-50 text-slate-600 hover:text-blue-600 text-[10px] font-bold uppercase tracking-widest border-t border-slate-200">
-                                                + Agregar Vuelo
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 4. Lista de Pasajeros y Acomodación */}
-                    <div className="relative z-10 p-8 pt-4">
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-2xl bg-slate-800 flex items-center justify-center text-white shadow-lg shadow-slate-900/20">
-                                <Users2 className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-slate-800 uppercase text-sm">Datos de los Pasajeros</h3>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-widest">Información detallada y acomodación</p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {passengerRows.map((pr, index) => (
-                                <div key={pr.id} className="flex relative items-start gap-4 p-5 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all group">
-                                    {passengerRows.length > 1 && (
-                                        <button onClick={() => removePassengerRow(pr.id)} className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-50 flex items-center justify-center text-red-500 text-xs hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100">×</button>
-                                    )}
-                                    <div className="w-10 h-10 mt-1 rounded-full bg-slate-50 flex shrink-0 items-center justify-center text-slate-400 font-black text-lg group-hover:bg-blue-500 group-hover:text-white transition-colors border border-slate-200 group-hover:border-transparent">
-                                        {index + 1}
-                                    </div>
-                                    <div className="flex-1 space-y-3">
-                                        <input value={pr.fullName || ''} onChange={e => setPassengerField(pr.id, 'fullName', e.target.value)} className="w-full bg-slate-50 rounded-xl px-3 py-2 font-bold text-slate-700 text-xs outline-none uppercase placeholder-slate-400 border border-transparent focus:border-blue-200 focus:bg-white transition-colors" placeholder="NOMBRES Y APELLIDOS" />
-                                        <div className="flex gap-2">
-                                            <input value={pr.docId || ''} onChange={e => setPassengerField(pr.id, 'docId', e.target.value)} className="w-1/2 bg-slate-50 rounded-xl px-3 py-2 font-mono text-[10px] text-slate-600 outline-none border border-transparent focus:border-blue-200 focus:bg-white transition-colors" placeholder="DOCUMENTO ID" />
-                                            <div className="w-1/2 relative">
-                                                <label className="absolute -top-1.5 left-2 bg-white px-1 text-[8px] font-black uppercase text-slate-400">Nacimiento</label>
-                                                <input type="date" value={pr.birthDate || ''} onChange={e => setPassengerField(pr.id, 'birthDate', e.target.value)} className="w-full bg-slate-50 rounded-xl px-3 py-2 text-[10px] font-mono text-slate-600 outline-none border border-transparent focus:border-blue-200 focus:bg-white transition-colors" />
+                            {/* 4. Pasajeros y Liquidación */}
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8">
+                                <div className="md:col-span-8 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                                    <h3 className="font-bold text-slate-800 uppercase text-sm mb-4 flex items-center gap-2"><Users2 className="w-4 h-4" /> Pasajeros</h3>
+                                    <div className="space-y-3">
+                                        {passengerRows.map((pr, idx) => (
+                                            <div key={pr.id} className="grid grid-cols-12 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                                <div className="col-span-5"><input value={pr.fullName} onChange={e => setPassengerField(pr.id, 'fullName', e.target.value)} className="w-full bg-transparent font-bold text-xs uppercase outline-none" placeholder="NOMBRE COMPLETO" /></div>
+                                                <div className="col-span-3"><input value={pr.docId} onChange={e => setPassengerField(pr.id, 'docId', e.target.value)} className="w-full bg-transparent font-mono text-[10px] outline-none" placeholder="DOCUMENTO" /></div>
+                                                <div className="col-span-3"><input type="date" value={pr.birthDate} onChange={e => setPassengerField(pr.id, 'birthDate', e.target.value)} className="w-full bg-transparent text-[10px] outline-none" /></div>
+                                                <div className="col-span-1 text-right"><button onClick={() => removePassengerRow(pr.id)} className="text-red-400 hover:text-red-600 font-bold text-lg">×</button></div>
                                             </div>
-                                        </div>
-                                        <input value={pr.accommodation || ''} onChange={e => setPassengerField(pr.id, 'accommodation', e.target.value)} className="w-full bg-indigo-50/50 rounded-xl px-3 py-2 font-bold text-[10px] text-indigo-700 outline-none placeholder-indigo-300 border border-indigo-100 focus:bg-white focus:border-indigo-300 uppercase transition-colors" placeholder="ACOMODACIÓN (EJ: 1 HABITACIÓN JR. SUITE)" />
+                                        ))}
+                                        <button onClick={addPassengerRow} className="w-full py-2 border border-dashed border-slate-200 rounded-xl text-slate-400 text-[11px] font-bold uppercase transition-colors hover:bg-slate-50">+ Agregar Pasajero</button>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                        <button onClick={addPassengerRow} className="mt-4 px-4 py-3 w-full border border-dashed border-slate-300 rounded-2xl text-slate-500 text-xs font-black uppercase tracking-widest hover:bg-slate-50 hover:border-blue-400 hover:text-blue-600 transition-all flex justify-center items-center gap-2">
-                            + Agregar Pasajero
-                        </button>
-                    </div>
 
-                    {/* LIQUIDACIÓN FINANCIERA Y FORMAS DE PAGO */}
-                    <div className="relative z-10 px-8 py-6 bg-slate-50/80 border-t border-b border-slate-200 text-slate-800">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-
-                            {/* Liquidación de Pagos Tabla */}
-                            <div>
-                                <h3 className="font-bold text-slate-800 uppercase text-sm mb-4 flex items-center gap-2">
-                                    <DollarSign className="w-5 h-5 text-emerald-600" /> Liquidación de Pagos
-                                </h3>
-                                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                    <table className="w-full text-xs">
-                                        <tbody className="divide-y divide-slate-100">
-                                            <tr>
-                                                <td className="p-3 font-bold bg-slate-50 text-slate-600 uppercase w-1/3">Valor Total del Plan</td>
-                                                <td className="p-3 font-black text-right text-base text-slate-800 bg-white">
-                                                    <div className="flex justify-end items-center gap-1">
-                                                        <span className="text-emerald-600 text-[10px]">$</span>
-                                                        <input value={totalPrice} readOnly className="bg-transparent text-right outline-none w-24 border-none pointer-events-none" /> {currencyC}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="p-3 bg-slate-50 text-slate-600 h-full border-r border-slate-100">
-                                                    <div className="font-bold uppercase mb-1 text-[11px]">Primer Abono</div>
-                                                    <input type="date" value={depositDate || ''} onChange={e => setDepositDate(e.target.value)} className="bg-white border border-slate-200 px-2 py-1 rounded text-[10px] font-mono outline-none focus:border-emerald-400 w-full" />
-                                                </td>
-                                                <td className="p-3 align-middle bg-white">
-                                                    <div className="flex flex-col items-end">
-                                                        <div className="flex items-center gap-2 font-black text-sm text-slate-800 mb-1">
-                                                            <input
-                                                                value={currencyC === 'COP' ? formatCOP(firstDeposit) : firstDeposit}
-                                                                onChange={e => {
-                                                                    const raw = e.target.value.replace(/\D/g, '');
-                                                                    setFirstDeposit(currencyC === 'COP' ? raw : e.target.value);
-                                                                }}
-                                                                placeholder="0.00"
-                                                                className="w-24 text-right border-b border-slate-200 focus:border-emerald-400 outline-none"
-                                                            /> {currencyC}
-                                                        </div>
-                                                        <span className="text-[9px] text-slate-400 font-medium italic">(Liquidado a la TRM del día)</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="p-3 bg-slate-50 text-slate-600 border-r border-slate-100">
-                                                    <div className="font-bold uppercase mb-1 text-[11px]">Segundo Abono</div>
-                                                    <input type="date" value={secondDepositDate || ''} onChange={e => setSecondDepositDate(e.target.value)} className="bg-white border border-slate-200 px-2 py-1 rounded text-[10px] font-mono outline-none focus:border-emerald-400 w-full" />
-                                                </td>
-                                                <td className="p-3 align-middle bg-white">
-                                                    <div className="flex flex-col items-end">
-                                                        <div className="flex items-center gap-2 font-black text-sm text-slate-800 mb-1">
-                                                            <input
-                                                                value={currencyC === 'COP' ? formatCOP(secondDeposit) : secondDeposit}
-                                                                onChange={e => {
-                                                                    const raw = e.target.value.replace(/\D/g, '');
-                                                                    setSecondDeposit(currencyC === 'COP' ? raw : e.target.value);
-                                                                }}
-                                                                placeholder="0.00"
-                                                                className="w-24 text-right border-b border-slate-200 focus:border-emerald-400 outline-none"
-                                                            /> {currencyC}
-                                                        </div>
-                                                        <span className="text-[9px] text-slate-400 font-medium italic">(Liquidado a la TRM del día)</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <tr className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-                                                <td className="p-3 border-r border-slate-700">
-                                                    <div className="font-black uppercase mb-1 text-[11px] text-blue-200">Saldo Total</div>
-                                                    <div className="flex items-center gap-1 text-[9px] mt-1 text-slate-300">
-                                                        Lim. <input type="date" value={dueDate || ''} onChange={e => setDueDate(e.target.value)} className="bg-slate-800 border-b border-slate-600 text-white/90 px-1 py-0.5 rounded-none font-mono outline-none focus:border-blue-400 flex-1" />
-                                                    </div>
-                                                </td>
-                                                <td className="p-3 align-middle text-right">
-                                                    <span className="font-black text-lg text-white">
-                                                        {(() => {
-                                                            const t = parseFloat(totalPrice) || 0;
-                                                            const p1 = parseFloat(firstDeposit) || 0;
-                                                            const p2 = parseFloat(secondDeposit) || 0;
-                                                            const rem = t - p1 - p2;
-                                                            const remFormatted = currencyC === 'COP' ? formatCOP(rem) : rem.toFixed(3);
-                                                            return remFormatted;
-                                                        })()} {currencyC}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {/* Formas de Pago */}
-                            <div>
-                                <h3 className="font-bold text-slate-800 uppercase text-sm mb-4 flex items-center gap-2">
-                                    <Receipt className="w-5 h-5 text-blue-600" /> Formas de Pago Aceptadas
-                                </h3>
-                                <div className="space-y-3">
-                                    <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-start gap-4">
-                                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3" /></svg>
+                                <div className="md:col-span-4 bg-slate-900 p-6 rounded-3xl text-white shadow-xl shadow-slate-900/20">
+                                    <h3 className="font-bold uppercase text-blue-400 text-xs mb-4">Resumen Financiero</h3>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between border-b border-white/10 pb-2">
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-white/60">Total Plan</span>
+                                            <span className="font-black text-lg">{currencyC === 'COP' ? formatCOP(totalPrice) : totalPrice} {currencyC}</span>
                                         </div>
-                                        <div>
-                                            <h4 className="font-bold text-[11px] text-slate-800 uppercase">Transferencia Bancaria</h4>
-                                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">Cuenta Bancolombia No. 15400007028</p>
+                                        <div className="flex justify-between border-b border-white/10 pb-2">
+                                            <span className="text-[10px] uppercase font-bold tracking-widest text-white/60">Abonado</span>
+                                            <span className="font-bold text-emerald-400">{currencyC === 'COP' ? formatCOP(firstDeposit) : firstDeposit} {currencyC}</span>
                                         </div>
-                                    </div>
-                                    <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-start gap-4">
-                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
+                                        <div className="flex justify-between pt-2">
+                                            <span className="text-[10px] uppercase font-black tracking-widest text-blue-400">Saldo</span>
+                                            <span className="font-black text-2xl text-white">
+                                                {(() => {
+                                                    const t = parseFloat(totalPrice) || 0;
+                                                    const p = parseFloat(firstDeposit) || 0;
+                                                    const s = t - p;
+                                                    return currencyC === 'COP' ? formatCOP(s) : s.toFixed(2);
+                                                })()} {currencyC}
+                                            </span>
                                         </div>
-                                        <div>
-                                            <h4 className="font-bold text-[11px] text-slate-800 uppercase">Código QR</h4>
-                                            <p className="text-[10px] text-slate-500 mt-0.5">Escanea nuestro QR para pagos rápidos desde la app Bancolombia.</p>
-                                        </div>
-                                    </div>
-                                    <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-start gap-4">
-                                        <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
-                                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-[11px] text-slate-800 uppercase">Link de Pagos PSE / Tarjetas</h4>
-                                            <p className="text-[10px] text-slate-500 mt-0.5">Pago con tarjeta de crédito tiene un incremento del 3% por uso de pasarela.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    {/* 5. Legales & Footer (Blocks) */}
-                    <div className="relative z-10 bg-slate-50/50 border-t border-slate-200/60 p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div className="bg-white p-6 rounded-2xl border border-blue-200 shadow-sm">
-                                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 mb-3">
-                                    <AlertTriangle className="w-5 h-5" />
-                                </div>
-                                <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-widest mb-2">Condiciones y Garantía</h4>
-                                <p className="text-[9px] text-slate-500 text-justify leading-relaxed font-medium">
-                                    <strong>CONDICIONES PLAN TURÍSTICO:</strong> El cliente declara que conoce y acepta las condiciones de este plan turístico. Tarifas sujetas a cambios y disponibilidad. Servicios no tomados no son reembolsables.<br /><br />
-                                    <strong>GARANTÍA DE LA RESERVA:</strong> Esta reserva se encuentra garantizada por Destinos P&P S.A.S, agencia de viajes con RNT N°175017 y se ajusta a las condiciones aquí descritas, a las políticas de aerolíneas, hoteles, y en lo no previsto, a las normas comerciales y de protección al consumidor.
-                                </p>
-                            </div>
-                            <div className="bg-white p-6 rounded-2xl border border-emerald-200 shadow-sm">
-                                <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mb-3">
-                                    <ShieldCheck className="w-5 h-5" />
-                                </div>
-                                <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-widest mb-2">Menores de Edad</h4>
-                                <p className="text-[9px] text-slate-500 text-justify leading-relaxed font-medium">
-                                    <strong>CUMPLIMIENTO LEY 679 DE 2001:</strong><br />Destinos P&P S.A.S está comprometida con la divulgación de la protección de niños, niñas y adolescentes en Colombia; en contra de la explotación sexual y demás formas de abuso sexual con menores de edad. Los menores que no viajen con sus padres deben llevar permiso autenticado en notaría, de lo contrario no podrán ingresar al hotel o salir del país.
-                                </p>
-                            </div>
-                            <div className="bg-white p-6 rounded-2xl border border-purple-200 shadow-sm">
-                                <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center text-purple-600 mb-3">
-                                    <FileCheck className="w-5 h-5" />
-                                </div>
-                                <h4 className="font-bold text-slate-800 text-[11px] uppercase tracking-widest mb-2">Habeas Data</h4>
-                                <p className="text-[9px] text-slate-500 text-justify leading-relaxed font-medium">
-                                    <strong>PROTECCIÓN GENERAL (LEY 1581 DE 2012):</strong><br />Los datos de los pasajeros suministrados, serán utilizados únicamente para garantizar la comunicación durante la operación de la reserva y garantizar el servicio contratado. Como responsables del uso de la información, damos estricto cumplimiento a la ley 1581 para la protección de la confidencialidad de la información personal de nuestros clientes.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col justify-between items-center md:items-stretch gap-6 pt-6 border-t border-slate-200">
-                            <div className="flex flex-col md:flex-row justify-between items-center gap-6 w-full">
-                                <div className="text-center md:text-left flex-1">
-                                    <p className="text-xs font-black text-slate-800 uppercase tracking-widest">Destinos P&P S.A.S</p>
-                                    <p className="text-[10px] text-slate-400 mt-1">RNT 175017 | NIT 901.721.152-3</p>
-                                </div>
-                                <div className="flex flex-col items-end gap-3 w-full md:w-auto">
-                                    {showConfirmErrors && getConfirmErrors().length > 0 && (
-                                        <div className="bg-red-50 border border-red-200 text-red-600 px-5 py-3 rounded-xl text-[10px] w-full max-w-sm shadow-sm animate-fade-in text-left">
-                                            <p className="font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                <AlertTriangle className="w-4 h-4" /> Datos requieridos para avanzar:
-                                            </p>
-                                            <ul className="list-disc pl-5 space-y-1 font-medium">
-                                                {getConfirmErrors().map((err, idx) => <li key={idx}>{err}</li>)}
-                                            </ul>
-                                        </div>
-                                    )}
-                                    <div className="flex gap-4">
-                                        <button className={`px-6 py-2.5 rounded-xl ${validateConfirm() && confirmSaved ? 'bg-white' : 'bg-slate-100 cursor-not-allowed'} border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm`} disabled={!validateConfirm() || !confirmSaved || isSaving} onClick={() => { if (!validateConfirm()) { setShowConfirmErrors(true); return; } if (!confirmSaved) return; generateConfirmationPdf({ folio: previewFolio || folioInput, clientName: clientNameC, clientEmail: clientEmailC, destination: destinationC, corporateBrand: activeCorporateBrand, flightRows, passengerRows, serviceRows, hotelName: hotelNameC, dateStart: dateStartC, dateEnd: dateEndC, totalPrice, firstDeposit, depositDate, secondDeposit, secondDepositDate, dueDate, advisorName, advisorRole, currency: currencyC }); }}>
-                                            <FileSpreadsheet className="w-4 h-4 text-emerald-500" /> Descargar PDF
-                                        </button>
-                                        <button className={`px-6 py-2.5 rounded-xl ${validateConfirm() ? 'bg-gradient-to-r from-blue-600 to-blue-500' : 'bg-slate-300'} text-white font-bold text-xs hover:shadow-lg hover:shadow-blue-500/30 transition-all flex items-center gap-2 shadow-md`} disabled={isSaving} onClick={() => { if (!validateConfirm()) { setShowConfirmErrors(true); return; } handleSaveConfirm(); }}>
-                                            {isSaving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <CheckCircle className="w-4 h-4" />}
-                                            {isSaving ? 'Certificando...' : 'Aceptar Confirmación'}
-                                            {saveStatus && <span className="text-[10px] ml-1">{saveStatus}</span>}
-                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
+
+                    {activeStepTab === 'payments' && (
+                        <div className="animate-fade-in p-8">
+                            <PaymentsView />
+                        </div>
+                    )}
+
+                    {activeStepTab === 'billing' && (
+                        <div className="animate-fade-in p-8">
+                            <BillingView />
+                        </div>
+                    )}
+
+                    {activeStepTab === 'voucher' && (
+                        <div className="animate-fade-in p-8">
+                            <VoucherView />
+                        </div>
+                    )}
                 </div>
             </div>
         );
@@ -5440,7 +5163,8 @@ const QuotesPage = () => {
                     ivaPercent: 19,
                     impoconsumoPercent: 8
                 },
-                notes: ''
+                notes: '',
+                mealPlan: ''
             }
         ]);
 
@@ -5473,7 +5197,8 @@ const QuotesPage = () => {
                 images: [DEFAULT_IMAGES.HOTEL],
                 nights: [{ id: Date.now() + 1, date: '', description: 'Alojamiento habitación sencilla', pax: 1, total: '' }],
                 fee: { base: '14496', taxAlojamiento: '0', ivaPercent: 19, impoconsumoPercent: 8 },
-                notes: ''
+                notes: '',
+                mealPlan: ''
             }]);
         };
 
@@ -5828,6 +5553,25 @@ const QuotesPage = () => {
                                 </button>
                             </div>
 
+                            <div className="mb-6">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 block">Planes de Alimentación (Múltiple)</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {['DESAYUNO', 'TODO INCLUIDO', 'MEDIA PENSION', 'PENSION COMPLETA', 'SOLO ALOJAMIENTO', 'OTRO'].map(plan => (
+                                        <button
+                                            key={plan}
+                                            onClick={() => {
+                                                const current = option.mealPlan?.split(',').map(s => s.trim()).filter(Boolean) || [];
+                                                const next = current.includes(plan) ? current.filter(s => s !== plan) : [...current, plan];
+                                                updateOption(option.id, 'mealPlan', next.join(', '));
+                                            }}
+                                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase transition-all border ${option.mealPlan?.includes(plan) ? 'bg-blue-600 text-white border-blue-700 shadow-md' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-blue-500'}`}
+                                        >
+                                            {plan}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* Detalle de Fee */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                                 <div className="space-y-4">
@@ -5882,11 +5626,11 @@ const QuotesPage = () => {
                                                     <div className="flex items-center gap-1">
                                                         <input
                                                             type="number"
-                                                            className="w-10 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-slate-400 text-[10px] font-bold text-center outline-none focus:border-blue-500/30 transition-all"
+                                                            className="w-10 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-blue-400 text-[10px] font-bold text-center outline-none focus:border-blue-500 transition-all cursor-pointer"
                                                             value={option.fee.ivaPercent ?? 19}
-                                                            onChange={(e) => updateOption(option.id, 'fee', { ...option.fee, ivaPercent: e.target.value })}
+                                                            onChange={(e) => updateOption(option.id, 'fee', { ...option.fee, ivaPercent: parseFloat(e.target.value) || 0 })}
                                                         />
-                                                        <span className="text-slate-600 text-[10px] font-bold">%</span>
+                                                        <span className="text-blue-400 text-[10px] font-bold">%</span>
                                                     </div>
                                                 </div>
                                                 <div className="w-full bg-slate-950/30 border border-slate-800 rounded-xl py-2 px-4 text-right text-slate-400 text-xs font-mono">
@@ -5899,11 +5643,11 @@ const QuotesPage = () => {
                                                     <div className="flex items-center gap-1">
                                                         <input
                                                             type="number"
-                                                            className="w-10 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-slate-400 text-[10px] font-bold text-center outline-none focus:border-blue-500/30 transition-all"
+                                                            className="w-10 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-blue-400 text-[10px] font-bold text-center outline-none focus:border-blue-500 transition-all cursor-pointer"
                                                             value={option.fee.impoconsumoPercent ?? 8}
-                                                            onChange={(e) => updateOption(option.id, 'fee', { ...option.fee, impoconsumoPercent: e.target.value })}
+                                                            onChange={(e) => updateOption(option.id, 'fee', { ...option.fee, impoconsumoPercent: parseFloat(e.target.value) || 0 })}
                                                         />
-                                                        <span className="text-slate-600 text-[10px] font-bold">%</span>
+                                                        <span className="text-blue-400 text-[10px] font-bold">%</span>
                                                     </div>
                                                 </div>
                                                 <div className="w-full bg-slate-950/30 border border-slate-800 rounded-xl py-2 px-4 text-right text-slate-400 text-xs font-mono">
@@ -6537,11 +6281,11 @@ const QuotesPage = () => {
                                 <span className="text-slate-500 text-[10px] font-bold uppercase">IVA:</span>
                                 <input
                                     type="number"
-                                    className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 text-[10px] font-bold text-center outline-none focus:border-pink-500/30 transition-all"
+                                    className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-pink-400 text-[10px] font-bold text-center outline-none focus:border-pink-500 transition-all cursor-pointer"
                                     value={finance.ivaPercent}
-                                    onChange={(e) => setFinance({ ...finance, ivaPercent: e.target.value })}
+                                    onChange={(e) => setFinance({ ...finance, ivaPercent: parseFloat(e.target.value) || 0 })}
                                 />
-                                <span className="text-slate-600 text-[10px]">%</span>
+                                <span className="text-pink-400 text-[10px] uppercase font-bold">%</span>
                             </div>
                             <span className="text-slate-300 text-right font-mono text-xs">${Math.round(totals.ivaAmount).toLocaleString()}</span>
 
@@ -6549,11 +6293,11 @@ const QuotesPage = () => {
                                 <span className="text-slate-500 text-[10px] font-bold uppercase">Impoconsumo:</span>
                                 <input
                                     type="number"
-                                    className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-slate-300 text-[10px] font-bold text-center outline-none focus:border-pink-500/30 transition-all"
+                                    className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-pink-400 text-[10px] font-bold text-center outline-none focus:border-pink-500 transition-all cursor-pointer"
                                     value={finance.impoconsumoPercent}
-                                    onChange={(e) => setFinance({ ...finance, impoconsumoPercent: e.target.value })}
+                                    onChange={(e) => setFinance({ ...finance, impoconsumoPercent: parseFloat(e.target.value) || 0 })}
                                 />
-                                <span className="text-slate-600 text-[10px]">%</span>
+                                <span className="text-pink-400 text-[10px] uppercase font-bold">%</span>
                             </div>
                             <span className="text-slate-300 text-right font-mono text-xs">${Math.round(totals.impoconsumoAmount).toLocaleString()}</span>
 
@@ -9952,6 +9696,7 @@ const QuotesPage = () => {
                             {activeMainTab === 'billing' && <BillingView />}
                             {activeMainTab === 'voucher' && <VoucherView />}
                             {activeMainTab === 'reconfirm' && <ReconfirmView />}
+                            {activeMainTab === 'producto' && <ProductModule advisorName={advisorName} advisorRole={advisorRole} />}
                             {activeMainTab === 'history' && <HistoryView />}
                             {activeMainTab === 'settings' && <ConfigurationView
                                 setActiveMainTab={setActiveMainTab}

@@ -4,13 +4,11 @@ export const getProcessStep = (row) => {
     const d = row.data || {};
     const s = row.status || d.status;
 
-    if (d.voucherGenerated) return 5;
-    if (d.lockedBilling) return 4;
+    // Si tiene voucher, registro de pago, facturación o está confirmado, es Paso 2 (Confirmación/Post-Venta)
+    if (d.voucherGenerated || d.lockedBilling || (d.supports && d.supports.length > 0) || d.reconfirmData?.pagoVerificado || s === 'confirmed' || d.serviceConfirmed) {
+        return 2;
+    }
 
-    // ERP: Sincronización automática de Paso 3 si Contabilidad verifica pago
-    if ((d.supports && d.supports.length > 0) || d.reconfirmData?.pagoVerificado) return 3;
-
-    if (s === 'confirmed' || d.serviceConfirmed) return 2;
     if (s === 'cancelled' || d.status === 'cancelled') return 0; // Estado especial
 
     return 1;
@@ -18,8 +16,5 @@ export const getProcessStep = (row) => {
 
 export const PROCESS_STEPS = [
     { id: 1, label: 'COT', full: 'Cotización', color: 'blue' },
-    { id: 2, label: 'CONF', full: 'Confirmación', color: 'blue' },
-    { id: 3, label: 'PAG', full: 'Pagos', color: 'amber' },
-    { id: 4, label: 'FACT', full: 'Facturación', color: 'blue' },
-    { id: 5, label: 'VCH', full: 'Voucher', color: 'emerald' }
+    { id: 2, label: 'CONF', full: 'Confirmación', color: 'blue' }
 ];

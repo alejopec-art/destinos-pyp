@@ -49,20 +49,20 @@ export async function generateUniversalPdf(type, opts) {
   try {
     // type: 'QUOTE' | 'CONFIRMATION' | 'VOUCHER'
     const {
-      folio,
-      clientName,
-      clientId,
-      clientNit,
-      clientCostCenter,
-      clientEmail,
-      clientPhone,
-      destination,
+      folio = '',
+      clientName = '',
+      clientId = '',
+      clientNit = '',
+      clientCostCenter = '',
+      clientEmail = '',
+      clientPhone = '',
+      destination = '',
       adults = 1,
       children = 0,
       infants = 0,
-      dateStart,
-      dateEnd,
-      duration,
+      dateStart = '',
+      dateEnd = '',
+      duration = '',
       hotels = [],
       includes = [],
       excludes = '',
@@ -71,26 +71,26 @@ export async function generateUniversalPdf(type, opts) {
       flightRows = [],
       serviceRows = [],
       luggage = { personal: true, hand: true, checked: false },
-      corporateBrand,
-      totalInvestment,
-      documentsInfo,
-      adultRate,
-      adultAffiliateRate,
-      adultNonAffiliateRate,
-      childRate,
-      totalToPay,
-      infantRate,
-      adults: adultsCount,
-      adultsAffiliate,
-      adultsNonAffiliate,
-      children: childrenCount,
-      infants: infantsCount,
+      corporateBrand = {},
+      totalInvestment = 0,
+      documentsInfo = '',
+      adultRate = 0,
+      adultAffiliateRate = 0,
+      adultNonAffiliateRate = 0,
+      childRate = 0,
+      totalToPay = 0,
+      infantRate = 0,
+      adults: adultsCount = 0,
+      adultsAffiliate = 0,
+      adultsNonAffiliate = 0,
+      children: childrenCount = 0,
+      infants: infantsCount = 0,
       currency = 'USD',
-      advisorName,
-      advisorRole,
-      closingNote,
-      observacionesImportantes,
-      suggestedDates
+      advisorName = '',
+      advisorRole = '',
+      closingNote = '',
+      observacionesImportantes = '',
+      suggestedDates = ''
     } = opts || {};
 
     // 1. Determine Branding & Titles
@@ -410,7 +410,10 @@ export async function generateUniversalPdf(type, opts) {
           doc.setTextColor(30, 41, 59);
           doc.text(`Alojamiento en: ${opts.hotelName.toUpperCase()}`, margin, y);
 
-          const planText = opts.mealPlan === 'OTRO' ? (opts.otherMealPlan || 'OTRO') : (opts.mealPlan || 'TODO INCLUIDO');
+          let planText = opts.mealPlan || 'TODO INCLUIDO';
+          if (opts.mealPlan === 'OTRO' && opts.otherMealPlan) {
+            planText = opts.otherMealPlan;
+          }
           doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(...COLORS.primary);
@@ -2198,18 +2201,18 @@ export async function generateEventPdf(opts) {
     doc.text('LIQUIDACIÓN FINANCIERA', margin + 200, y);
     y += 10;
 
-    const subtotalEventPlain = totals.subtotalEvent || 0;
-    const ivaPlain = totals.ivaAmount || 0;
-    const impoconsumoPlain = totals.impoconsumoAmount || 0;
+    const subtotalEventPlain = totals?.subtotalEvent || 0;
+    const ivaPlain = totals?.ivaAmount || 0;
+    const impoconsumoPlain = totals?.impoconsumoAmount || 0;
 
     const summaryRows = [
       ['Sub Total Servicios', `$ ${Math.round(subtotalEventPlain - ivaPlain - impoconsumoPlain).toLocaleString()}`],
-      [`IVA (${finance.ivaPercent}%)`, `$ ${Math.round(ivaPlain).toLocaleString()}`],
-      [`Impoconsumo (${finance.impoconsumoPercent}%)`, `$ ${Math.round(impoconsumoPlain).toLocaleString()}`],
+      [`IVA (${finance?.ivaPercent ?? 19}%)`, `$ ${Math.round(ivaPlain).toLocaleString()}`],
+      [`Impoconsumo (${finance?.impoconsumoPercent ?? 8}%)`, `$ ${Math.round(impoconsumoPlain).toLocaleString()}`],
       ['Sub Total Evento', `$ ${Math.round(subtotalEventPlain).toLocaleString()}`],
-      [`Fee Agencia (${finance.agencyFeePercent}%)`, `$ ${Math.round(totals.feeAmount || 0).toLocaleString()}`],
-      [`IVA sobre Fee (${finance.feeIvaPercent}%)`, `$ ${Math.round(totals.feeIvaAmount || 0).toLocaleString()}`],
-      ['TOTAL A PAGAR EVENTO', `$ ${Math.round(totals.totalEvent || 0).toLocaleString()}`]
+      [`Fee Agencia (${finance?.agencyFeePercent ?? 8}%)`, `$ ${Math.round(totals?.feeAmount || 0).toLocaleString()}`],
+      [`IVA sobre Fee (${finance?.feeIvaPercent ?? 19}%)`, `$ ${Math.round(totals?.feeIvaAmount || 0).toLocaleString()}`],
+      ['TOTAL A PAGAR EVENTO', `$ ${Math.round(totals?.totalEvent || 0).toLocaleString()}`]
     ];
 
     autoTable(doc, {
@@ -2394,6 +2397,15 @@ export async function generateAccommodationPdf(opts) {
       const maxHotelWidth = pageWidth - margin - (margin + 350) - 5; // Respetar margen derecho
       const hotelString = doc.splitTextToSize(`OPCIÓN ${i + 1}: ${hotelName}`.toUpperCase(), maxHotelWidth);
       doc.text(hotelString, margin + 350, y + 35);
+
+      if (option.mealPlan) {
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text('PLAN DE ALIMENTACIÓN', margin + 15, y + 50);
+        doc.setFontSize(9);
+        doc.setTextColor(15, 23, 42);
+        doc.text(option.mealPlan.toUpperCase(), margin + 140, y + 50);
+      }
 
       y += 80;
 
@@ -2812,5 +2824,139 @@ export async function generateVacacionesMedidaPdf(opts) {
   } catch (error) {
 
     throw error;
+  }
+}
+
+export async function generateProductPdf(opts) {
+  try {
+    const { activeTab, data, advisorName, advisorRole } = opts;
+    const tabData = data[activeTab];
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'pt',
+      format: 'a4'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 40;
+
+    let y = 60;
+
+    // --- 1. CABECERA PREMIUM (Lime Style) ---
+    doc.setFillColor(15, 23, 42); // Slate 900
+    doc.rect(0, 0, pageWidth, 60, 'F');
+    doc.setFillColor(163, 230, 53); // Lime 400
+    doc.rect(0, 60, pageWidth, 5, 'F');
+
+    const logo = await loadImage(LOGO_DESTINOS);
+    if (logo && logo.dataUrl) {
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(margin, 10, 80, 40, 5, 5, 'F');
+      const imgRatio = logo.width / logo.height;
+      const dHeight = 30;
+      const dWidth = dHeight * imgRatio;
+      doc.addImage(logo.dataUrl, 'PNG', margin + (80 - dWidth) / 2, 15, dWidth, dHeight);
+    }
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('FICHA TÉCNICA DE PRODUCTO', pageWidth / 2, 35, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(163, 230, 53);
+    doc.text(activeTab.toUpperCase(), pageWidth / 2, 48, { align: 'center' });
+
+    y = 100;
+
+    // --- 2. INFORMACIÓN GENERAL ---
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, y, pageWidth - (margin * 2), 50, 5, 5, 'F');
+
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('DESTINO / PRODUCTO', margin + 15, y + 15);
+    doc.text('TASA DE CAMBIO (TRM)', margin + 350, y + 15);
+
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text((tabData.destination || 'SIN NOMBRE').toUpperCase(), margin + 15, y + 32);
+    doc.text(`${tabData.nights || 1}`, margin + 250, y + 32);
+    doc.text(`$ ${parseFloat(tabData.trm).toLocaleString()}`, margin + 350, y + 32);
+
+    y += 70;
+
+    // --- 3. TABLA DE COSTEO ---
+    const accommodations = ['SENCILLA', 'DOBLE', 'TRIPLE', 'CHD', 'INF'];
+    const nights = parseInt(tabData.nights) || 1;
+    const tableData = accommodations.map(type => {
+      const row = tabData.rows[type];
+      const hotelTotal = (parseFloat(row.hotel) || 0) * nights;
+      const costoPT = hotelTotal + (parseFloat(row.asistencia) || 0) + (parseFloat(row.receptivos) || 0);
+      const markup = parseFloat(row.markup) || 0;
+      const utilidad = costoPT * (markup / 100);
+      const tiquete = parseFloat(row.tiquete) || 0;
+      const adminFee = (parseFloat(row.adminFeeNet) || 0) + (parseFloat(row.adminFeeIVA) || 0);
+      const totalVenta = costoPT + utilidad + tiquete + adminFee;
+
+      return [
+        type,
+        `$ ${Math.round(row.hotel).toLocaleString()}`,
+        `$ ${Math.round(row.asistencia).toLocaleString()}`,
+        `$ ${Math.round(row.receptivos).toLocaleString()}`,
+        `$ ${Math.round(costoPT).toLocaleString()}`,
+        `${markup}%`,
+        `$ ${Math.round(tiquete).toLocaleString()}`,
+        `$ ${Math.round(adminFee).toLocaleString()}`,
+        `$ ${Math.round(totalVenta).toLocaleString()}`
+      ];
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head: [['ALOJAMIENTO', 'HOTEL/N', 'ASIST.', 'RECEPT.', 'COSTO PT', 'MARKUP', 'TIQUETE', 'FEE', 'TOTAL VENTA']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontSize: 8,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold' },
+        7: { fillColor: [163, 230, 53, 0.1], textColor: [20, 83, 45], fontStyle: 'bold' }
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 8
+      }
+    });
+
+    y = doc.lastAutoTable.finalY + 40;
+
+    // --- 4. FIRMA Y CONDICIONES ---
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('NOTAS IMPORTANTES:', margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text([
+      '• Los precios expresados están sujetos a cambios sin previo aviso.',
+      '• El cálculo de utilidad no incluye la porción aérea (Tiquetes).',
+      '• La TRM aplicada es informativa y puede variar al momento del pago.',
+      '• Los valores están calculados por persona según el tipo de acomodación.'
+    ], margin, y + 15);
+
+    // Footer simple
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Generado por ${advisorName || 'Asesor'} - ${new Date().toLocaleString()}`, margin, pageHeight - 30);
+    doc.text('Destinos P&P - Expertos en Experiencias', pageWidth - margin, pageHeight - 30, { align: 'right' });
+
+    doc.save(`Ficha_Tecnica_${tabData.destination.replace(/\s+/g, '_')}_${activeTab}.pdf`);
+
+  } catch (error) {
+    console.error('Error generating product PDF:', error);
   }
 }
