@@ -38,6 +38,9 @@ const IntranetLayout = () => {
     // Módulo Vacacional (Por defecto para quotes/vacacional)
     if (path.includes('quotes') || path.includes('vacacional')) return 'Módulo: Vacacional';
 
+    // Módulo Producto
+    if (path.includes('producto')) return 'Módulo: Producto';
+
     return 'Panel Principal';
   };
 

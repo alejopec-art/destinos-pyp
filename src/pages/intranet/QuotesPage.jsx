@@ -1146,7 +1146,6 @@ const QuotesPage = () => {
         { id: 'billing', label: 'Facturación', icon: Receipt, desc: 'Liquidación Operadores' },
         { id: 'voucher', label: 'Voucher', icon: FileSpreadsheet, desc: 'Generación Excel' },
         { id: 'reconfirm', label: 'Re-confirmación', icon: ClipboardList, desc: 'Checklist y Novedades' },
-        { id: 'producto', label: 'Producto', icon: Calculator, desc: 'Plantilla de Costeo' },
         { id: 'history', label: 'Historial', icon: LayoutDashboard, desc: 'Registro de cotizaciones' },
         { id: 'settings', label: 'Configuración', icon: Settings, desc: 'Perfil y Estadísticas' },
     ];

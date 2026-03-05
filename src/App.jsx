@@ -20,6 +20,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import AccessDeniedPage from './pages/intranet/AccessDenied';
 
+import ProductModule from './pages/intranet/ProductModule';
+
 function App() {
   return (
     <AuthProvider>
@@ -83,6 +85,14 @@ function App() {
             }
           />
           <Route element={<IntranetLayout />}>
+            <Route
+              path="/intranet/producto"
+              element={
+                <ProtectedRoute module="vacacional">
+                  <ProductModule />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/intranet/sales"
               element={

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { generateProductPdf } from '../../utils/pdf';
+import { useAuth } from '../../context/AuthContext';
 
 // --- CONFIGURACIÓN Y CONSTANTES ---
 const ACCOMMODATIONS = ['SENCILLA', 'DOBLE', 'TRIPLE', 'CHD', 'INF'];
@@ -37,7 +38,11 @@ const INITIAL_TAB_DATA = {
     }), {})
 };
 
-const ProductModule = ({ advisorName, advisorRole }) => {
+const ProductModule = () => {
+    const { user } = useAuth();
+    const advisorName = user?.full_name || user?.name || 'Asesora';
+    const advisorRole = user?.professional_role || 'Asesora Comercial';
+
     const [activeTab, setActiveTab] = useState('NACIONAL');
     const [data, setData] = useState({
         'NACIONAL': { ...INITIAL_TAB_DATA },
