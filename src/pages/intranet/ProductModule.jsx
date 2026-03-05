@@ -1,15 +1,27 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    Calculator, Globe, Map, Plane, RefreshCcw, Download, Save,
-    AlertCircle, TrendingUp, Info, ChevronRight, Database, FileText, ArrowLeft
+    Globe, Map, Plane, RefreshCcw, Download, Save,
+    TrendingUp, Info, ChevronRight, Database, FileText, ArrowLeft
 } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { generateProductPdf } from '../../utils/pdf';
 import { useAuth } from '../../context/AuthContext';
 
 // --- CONFIGURACIÓN Y CONSTANTES ---
-const ACCOMMODATIONS = ['SENCILLA', 'DOBLE', 'TRIPLE', 'CHD', 'INF'];
+const ACCOMMODATIONS = [
+    { id: 'SENCILLA', label: 'SENCILLA', sub: '', isNight: false, bgHeader: 'bg-blue-600/40 text-blue-200' },
+    { id: 'SENCILLA_NA', label: 'Noche', sub: 'Adicional', isNight: true, bgHeader: 'bg-blue-600/20 text-blue-200/70' },
+    { id: 'DOBLE', label: 'DOBLE', sub: '', isNight: false, bgHeader: 'bg-blue-600/40 text-blue-200' },
+    { id: 'DOBLE_NA', label: 'Noche', sub: 'Adicional', isNight: true, bgHeader: 'bg-blue-600/20 text-blue-200/70' },
+    { id: 'TRIPLE', label: 'TRIPLE O', sub: 'MULTIPLE', isNight: false, bgHeader: 'bg-blue-600/40 text-blue-200' },
+    { id: 'TRIPLE_NA', label: 'Noche', sub: 'Adicional', isNight: true, bgHeader: 'bg-blue-600/20 text-blue-200/70' },
+    { id: 'CHD_2_11', label: 'Niños', sub: '2 a 11 años', isNight: false, bgHeader: 'bg-blue-600/40 text-blue-200' },
+    { id: 'CHD_2_11_NA', label: 'Noche', sub: 'Adicional', isNight: true, bgHeader: 'bg-blue-600/20 text-blue-200/70' },
+    { id: 'INF_0_23', label: 'Niños', sub: '0 a 23meses', isNight: false, bgHeader: 'bg-blue-600/40 text-blue-200' },
+    { id: 'INF_0_23_NA', label: 'Noche', sub: 'Adicional', isNight: true, bgHeader: 'bg-blue-600/20 text-blue-200/70' }
+];
+
 const TABS = [
     { id: 'NACIONAL', label: 'NACIONAL', icon: Map },
     { id: 'INTERNACIONAL', label: 'INTERNACIONAL', icon: Globe },
@@ -18,37 +30,42 @@ const TABS = [
 ];
 
 const INITIAL_ROW = {
-    hotel: 0,
+    tarifaCobrar: 0,
+    tiqueteTop: 0,
+    taFeeTop: 0,
+    tiqueteNeto: 0,
+    tarifaAdminIva: 0,
+    feeEmision: 0,
     asistencia: 0,
+    alojamiento: 0,
+    ivaAlojamiento: 0,
+    seguroHotelero: 0,
+    traslados: 0,
     receptivos: 0,
-    tiquete: 0,
-    markup: 15,
-    ivaPT: 0,
-    ivaTiquete: 0,
-    adminFeeNet: 21008,
-    adminFeeIVA: 3992
+    utilidad: 0.8
 };
 
 const INITIAL_TAB_DATA = {
     destination: '',
     trm: 4000,
     nights: 1,
-    rows: ACCOMMODATIONS.reduce((acc, type) => ({
+    rows: ACCOMMODATIONS.reduce((acc, col) => ({
         ...acc,
-        [type]: { ...INITIAL_ROW }
+        [col.id]: { ...INITIAL_ROW }
     }), {})
 };
 
 const EditableInput = ({ value, onChange, prefix = '', suffix = '', className = '' }) => (
-    <div className={`relative group ${className}`}>
-        {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lime-500/50 text-[10px] font-bold">{prefix}</span>}
+    <div className={`relative group w-full ${className}`}>
+        {prefix && <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30 text-[9px] font-bold">{prefix}</span>}
         <input
             type="number"
-            value={value}
+            value={value === 0 || value === '0' ? '' : value}
             onChange={e => onChange(e.target.value)}
-            className={`w-full bg-[#0d0d0f] border border-white/5 rounded-lg px-3 py-2 text-sm text-lime-400 font-mono focus:border-lime-500/50 outline-none transition-all ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-8' : ''}`}
+            className={`w-full bg-black/20 focus:bg-white/10 border border-white/5 rounded px-5 py-1.5 text-[11px] text-center font-mono font-bold text-white outline-none transition-all hover:border-white/20`}
+            placeholder="0"
         />
-        {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-lime-500/50 text-[10px] font-bold">{suffix}</span>}
+        {suffix && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 text-[9px] font-bold">{suffix}</span>}
     </div>
 );
 
@@ -59,70 +76,66 @@ const ProductModule = () => {
 
     const [activeTab, setActiveTab] = useState('NACIONAL');
     const [data, setData] = useState({
-        'NACIONAL': { ...INITIAL_TAB_DATA },
-        'INTERNACIONAL': { ...INITIAL_TAB_DATA, trm: 4000 },
-        'NACIONAL SOLO PT': { ...INITIAL_TAB_DATA },
-        'INTERNACIONAL SOLO PT': { ...INITIAL_TAB_DATA, trm: 4000 }
+        'NACIONAL': JSON.parse(JSON.stringify(INITIAL_TAB_DATA)),
+        'INTERNACIONAL': JSON.parse(JSON.stringify(INITIAL_TAB_DATA)),
+        'NACIONAL SOLO PT': JSON.parse(JSON.stringify(INITIAL_TAB_DATA)),
+        'INTERNACIONAL SOLO PT': JSON.parse(JSON.stringify(INITIAL_TAB_DATA))
     });
     const [loading, setLoading] = useState(false);
     const [saveStatus, setSaveStatus] = useState(null);
 
-    // --- LÓGICA DE CÁLCULO ---
-    const calculateTotals = (tabId, rowType) => {
-        const row = data[tabId].rows[rowType];
-        const isInternational = tabId.includes('INTERNACIONAL');
-        const trm = parseFloat(data[tabId].trm) || 1;
-        const nights = parseInt(data[tabId].nights) || 1;
+    // --- LÓGICA DE CÁLCULO EXACTA DE EXCEL ---
+    const calculateTotals = (tabId, colId) => {
+        const col = data[tabId]?.rows[colId] || { ...INITIAL_ROW };
 
-        // 1. Costo PT (Terrestre)
-        const hotelTotal = (parseFloat(row.hotel) || 0) * nights;
-        const costoPT = hotelTotal +
-            (parseFloat(row.asistencia) || 0) +
-            (parseFloat(row.receptivos) || 0);
+        // Inputs
+        const tarifaCobrar = parseFloat(col.tarifaCobrar) || 0;
+        const tiqueteNeto = parseFloat(col.tiqueteNeto) || 0;
+        const tarifaAdminIva = parseFloat(col.tarifaAdminIva) || 0;
+        const feeEmision = parseFloat(col.feeEmision) || 0;
 
-        // 2. Utilidad (Se calcula solo sobre el Costo PT)
-        const markup = parseFloat(row.markup) || 0;
-        const utilidad = costoPT * (markup / 100);
+        const asistencia = parseFloat(col.asistencia) || 0;
+        const alojamiento = parseFloat(col.alojamiento) || 0;
+        const ivaAlojamiento = parseFloat(col.ivaAlojamiento) || 0;
+        const seguroHotelero = parseFloat(col.seguroHotelero) || 0;
+        const traslados = parseFloat(col.traslados) || 0;
+        const receptivos = parseFloat(col.receptivos) || 0;
 
-        // 3. Tiquete (Neto)
-        const tiquete = parseFloat(row.tiquete) || 0;
+        const utilidad = parseFloat(col.utilidad) || 0.8;
 
-        // 4. IVA
-        const ivaPT = (parseFloat(row.ivaPT) || 0);
-        const ivaTiquete = (parseFloat(row.ivaTiquete) || 0);
+        // Math Bottom-Up (Excel)
+        const sumCostoPT = asistencia + alojamiento + ivaAlojamiento + seguroHotelero + traslados + receptivos;
 
-        // 5. Tarifa Administrativa (Neta + IVA)
-        const adminFee = (parseFloat(row.adminFeeNet) || 0) + (parseFloat(row.adminFeeIVA) || 0);
+        let valorPT = sumCostoPT;
+        if (utilidad > 0 && utilidad <= 2) {
+            valorPT = sumCostoPT / utilidad;
+        }
 
-        // 6. Totales
-        const netoSinTiquete = costoPT + utilidad + ivaPT;
-        const totalVenta = netoSinTiquete + tiquete + ivaTiquete + adminFee;
+        const incrementoTC = valorPT * 0.05;
+        const precioTotal = valorPT + incrementoTC + tiqueteNeto + tarifaAdminIva + feeEmision;
+
+        const utilidadPT = valorPT - sumCostoPT;
+        const utilidadAdicional = tarifaCobrar - precioTotal;
 
         return {
-            costoPT,
-            utilidad,
-            netoSinTiquete,
-            totalVenta,
-            totalVentaCOP: totalVenta * trm
+            sumCostoPT,
+            valorPT,
+            incrementoTC,
+            precioTotal,
+            utilidadPT,
+            utilidadAdicional
         };
     };
 
-    const handleNightsChange = (tabId, value) => {
-        setData(prev => ({
-            ...prev,
-            [tabId]: { ...prev[tabId], nights: value }
-        }));
-    };
-
-    const handleInputChange = (tabId, rowType, field, value) => {
+    const handleInputChange = (tabId, colId, field, value) => {
         setData(prev => ({
             ...prev,
             [tabId]: {
                 ...prev[tabId],
                 rows: {
                     ...prev[tabId].rows,
-                    [rowType]: {
-                        ...prev[tabId].rows[rowType],
+                    [colId]: {
+                        ...prev[tabId].rows[colId],
                         [field]: value
                     }
                 }
@@ -143,6 +156,45 @@ const ProductModule = () => {
             [tabId]: { ...prev[tabId], trm: value }
         }));
     };
+
+    // --- HELPER RENDERS PARA CADA FILA (Row) ---
+    const renderInputRow = (label, fieldKey, rowClass, inputClass, labelClass = "") => (
+        <tr className={`group transition-colors ${rowClass}`}>
+            <td className={`p-2 border-r border-b border-white/5 font-bold text-[10px] uppercase tracking-wider pl-4 whitespace-nowrap ${labelClass}`}>
+                {label}
+            </td>
+            {ACCOMMODATIONS.map(col => (
+                <td key={`${col.id}-${fieldKey}`} className="p-1 text-center border-r border-b border-white/5">
+                    <EditableInput
+                        value={data[activeTab].rows[col.id][fieldKey]}
+                        onChange={val => handleInputChange(activeTab, col.id, fieldKey, val)}
+                        prefix={fieldKey === 'utilidad' ? '' : '$'}
+                        className={inputClass}
+                    />
+                </td>
+            ))}
+        </tr>
+    );
+
+    const renderCalcRow = (label, resultKey, rowClass, textClass, labelClass = "") => (
+        <tr className={`group transition-colors ${rowClass}`}>
+            <td className={`p-2 border-r border-b border-white/5 font-bold text-[10px] uppercase tracking-wider pl-4 whitespace-nowrap ${labelClass}`}>
+                {label}
+            </td>
+            {ACCOMMODATIONS.map(col => {
+                const totals = calculateTotals(activeTab, col.id);
+                const val = totals[resultKey];
+                const isNegative = Math.round(val) < 0;
+                return (
+                    <td key={`${col.id}-${resultKey}`} className="p-2 text-center border-r border-b border-white/5">
+                        <span className={`text-xs font-mono font-bold ${isNegative ? 'text-red-500' : textClass}`}>
+                            $ {Math.round(val).toLocaleString()}
+                        </span>
+                    </td>
+                );
+            })}
+        </tr>
+    );
 
     // --- PERSISTENCIA ---
     const saveToSupabase = async () => {
@@ -167,7 +219,7 @@ const ProductModule = () => {
             setSaveStatus('¡Guardado con éxito!');
         } catch (err) {
             console.error(err);
-            setSaveStatus(`Error: ${err.message}`);
+            setSaveStatus(`Error`);
         } finally {
             setLoading(false);
             setTimeout(() => setSaveStatus(null), 3000);
@@ -187,9 +239,15 @@ const ProductModule = () => {
 
             if (error && error.code !== 'PGRST116') throw error;
             if (result) {
+                // Merge to ensure missing fields are populated in old quotes
+                const mergedRows = Object.keys(INITIAL_TAB_DATA.rows).reduce((acc, colId) => {
+                    acc[colId] = { ...INITIAL_TAB_DATA.rows[colId], ...(result.config_data.rows[colId] || {}) };
+                    return acc;
+                }, {});
+
                 setData(prev => ({
                     ...prev,
-                    [activeTab]: result.config_data
+                    [activeTab]: { ...result.config_data, rows: mergedRows }
                 }));
             }
         } catch (err) {
@@ -200,6 +258,7 @@ const ProductModule = () => {
     };
 
     const handleExportPdf = () => {
+        // PDF generation might need adjustment for the new state shape later
         generateProductPdf({
             activeTab,
             data,
@@ -237,24 +296,13 @@ const ProductModule = () => {
                 <div className="flex items-center gap-4">
                     <div className="relative group">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lime-400">
-                            <Plane className="w-4 h-4" />
-                        </span>
-                        <input
-                            value={data[activeTab].nights}
-                            onChange={e => handleNightsChange(activeTab, e.target.value)}
-                            className="bg-black/60 border border-white/10 pl-10 pr-4 py-2 rounded-xl text-lime-400 font-black text-sm outline-none focus:border-lime-500/40 w-24"
-                            placeholder="Noches"
-                        />
-                    </div>
-                    <div className="relative group">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lime-400">
                             <RefreshCcw className="w-4 h-4" />
                         </span>
                         <input
                             value={data[activeTab].trm}
                             onChange={e => handleTRMChange(activeTab, e.target.value)}
                             className="bg-black/60 border border-white/10 pl-10 pr-4 py-2 rounded-xl text-lime-400 font-black text-sm outline-none focus:border-lime-500/40 w-32"
-                            placeholder="TRM"
+                            placeholder="TRM Global"
                         />
                     </div>
                     <button
@@ -270,260 +318,145 @@ const ProductModule = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Left Panel: Configuration */}
-                <div className="lg:col-span-12 xl:col-span-4 flex flex-col gap-6">
-                    <div className="bg-[#0d0d0f]/80 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden group">
+                <div className="lg:col-span-12 xl:col-span-3 flex flex-col gap-6">
+                    <div className="bg-[#0d0d0f]/80 backdrop-blur-xl p-8 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden group flex-1">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-lime-500/5 blur-3xl rounded-full"></div>
                         <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3">
                             <Database className="w-5 h-5 text-lime-400" />
-                            Configuración de Producto
+                            Operación
                         </h3>
 
                         <div className="space-y-6">
                             <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Nombre del Destino / Producto</label>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Nombre del Paquete</label>
                                 <div className="relative">
                                     <input
                                         value={data[activeTab].destination}
                                         onChange={e => handleDestinationChange(activeTab, e.target.value)}
                                         onBlur={() => loadFromSupabase(data[activeTab].destination)}
-                                        className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white font-bold outline-none focus:border-lime-500/40 transition-all"
-                                        placeholder="Ej: CANCÚN TODO INCLUIDO"
+                                        className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-white font-bold outline-none focus:border-lime-500/40 transition-all text-sm"
+                                        placeholder="Ej: SAN ANDRÉS"
                                     />
                                     <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600" />
                                 </div>
                             </div>
 
-                            <div className="bg-lime-500/5 rounded-2xl p-5 border border-lime-500/10 space-y-4">
-                                <div className="flex items-center gap-3 text-lime-400 mb-2">
-                                    <Info className="w-4 h-4" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Información de Costeo</span>
+                            <div className="bg-gradient-to-br from-[#0d0d0f] to-[#151518] p-5 rounded-3xl border border-white/5">
+                                <h3 className="text-xs font-black text-white mb-4 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4 text-lime-400" />
+                                    Ganancia Consolidada
+                                </h3>
+                                <div className="space-y-3">
+                                    {ACCOMMODATIONS.filter(a => !a.isNight).map(col => {
+                                        const { utilidadPT, utilidadAdicional } = calculateTotals(activeTab, col.id);
+                                        const ganancia = utilidadPT + utilidadAdicional;
+                                        return (
+                                            <div key={col.id} className="flex justify-between items-center px-1 border-b border-white/5 pb-2">
+                                                <span className="text-[10px] font-bold text-slate-500">{col.label}</span>
+                                                <span className="text-xs font-black text-lime-400 font-mono flex items-center gap-2">
+                                                    $ {Math.round(ganancia).toLocaleString()}
+                                                    {activeTab.includes('INTERNACIONAL') && (
+                                                        <span className="text-[8px] text-slate-600 font-bold tracking-tighter bg-white/5 px-2 py-0.5 rounded-full">COP: $ {Math.round(ganancia * (parseFloat(data[activeTab].trm) || 1)).toLocaleString()}</span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                                <p className="text-xs text-slate-400 leading-relaxed italic">
-                                    Las celdas resaltadas en <span className="text-lime-500 font-bold">LIME</span> son editables y corresponden a los campos amarillos del Excel.
-                                </p>
-                                <button
-                                    onClick={handleExportPdf}
-                                    className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <Download className="w-4 h-4" /> Exportar Ficha Técnica
-                                </button>
                             </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-[#0d0d0f] to-[#151518] p-8 rounded-3xl border border-white/5 shadow-2xl">
-                        <h3 className="text-sm font-black text-white mb-6 uppercase tracking-[0.2em] flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-lime-400" />
-                            Resumen de Utilidades
-                        </h3>
-                        <div className="space-y-4">
-                            {ACCOMMODATIONS.map(type => {
-                                const { utilidad } = calculateTotals(activeTab, type);
-                                return (
-                                    <div key={type} className="flex justify-between items-center p-3 rounded-xl bg-black/40 border border-white/5">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-bold text-slate-500">{type}</span>
-                                            {activeTab.includes('INTERNACIONAL') && (
-                                                <span className="text-[9px] text-lime-600 font-bold uppercase tracking-tighter">Util/COP: $ {Math.round(utilidad * (parseFloat(data[activeTab].trm) || 1)).toLocaleString()}</span>
-                                            )}
-                                        </div>
-                                        <span className="text-sm font-black text-lime-400">$ {Math.round(utilidad).toLocaleString()}</span>
-                                    </div>
-                                );
-                            })}
                         </div>
                     </div>
                 </div>
 
-                {/* Main Grid: Calculator */}
-                <div className="lg:col-span-12 xl:col-span-8 overflow-x-auto">
-                    <div className="min-w-[1000px] bg-[#0d0d0f]/80 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                {/* Main Grid: Calculator Matrix (10x18 exactly like Excel) */}
+                <div className="lg:col-span-12 xl:col-span-9 overflow-x-auto custom-scrollbar pb-4">
+                    <div className="min-w-[1100px] bg-[#0d0d0f]/90 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden shadow-2xl relative">
                         <table className="w-full border-collapse text-left">
-                            <thead className="bg-[#0f0f13] shadow-xl">
+                            <thead className="bg-[#0a0a0c]">
                                 <tr>
-                                    <th className="p-4 border-b border-white/5 text-[10px] uppercase font-black tracking-widest text-slate-500 w-64 bg-black/40"> Concepto a Cotizar </th>
-                                    {ACCOMMODATIONS.map(type => (
-                                        <th key={type} className="p-4 border-b border-white/5 border-l border-white/5 text-xs uppercase font-black tracking-widest text-white text-center w-40 bg-black/40">
-                                            {type}
+                                    <th className="p-3 border-r border-b border-white/5 text-[10px] uppercase font-black tracking-widest text-slate-500 w-[200px]">
+                                        <div className="flex flex-col">
+                                            <span className="text-blue-500">Matriz de Costeo</span>
+                                            <span className="text-[8px] text-slate-600 tracking-tighter">Excel Replica 1:1</span>
+                                        </div>
+                                    </th>
+                                    {ACCOMMODATIONS.map(col => (
+                                        <th key={col.id} className={`p-2 border-r border-b border-white/5 text-center align-middle w-[90px] ${col.bgHeader}`}>
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-[10px] font-black uppercase tracking-tight leading-tight">{col.label}</span>
+                                                {col.sub && <span className="text-[9px] font-bold uppercase tracking-widest leading-none mt-0.5">{col.sub}</span>}
+                                            </div>
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {/* 1. TARIFA A COBRAR (TOTAL VENTA) */}
+                            <tbody className="bg-[#0f0f13]">
+                                {/* 1. Tarifa a Cobrar */}
                                 <tr className="bg-blue-600/10 hover:bg-blue-600/20 transition-colors">
-                                    <td className="p-4 border-r border-white/5 font-black text-[11px] text-blue-400 uppercase tracking-widest pl-4">
+                                    <td className="p-3 border-r border-b border-white/5 font-black text-[10px] text-blue-400 uppercase tracking-widest pl-4 whitespace-nowrap">
                                         Tarifa a Cobrar por Persona
                                     </td>
-                                    {ACCOMMODATIONS.map(type => {
-                                        const { totalVenta } = calculateTotals(activeTab, type);
-                                        return (
-                                            <td key={`tarifa-${type}`} className="p-4 text-center border-r border-white/5">
-                                                <span className="text-xl font-black text-blue-400 font-mono tracking-tighter shadow-blue-500 drop-shadow-md">
-                                                    $ {Math.round(totalVenta).toLocaleString()}
-                                                </span>
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-
-                                {/* 2. COSTO TOTAL TERRESTRE (Costo PT + Utilidad) -> in Excel it's Valor Porcion Terrestre */}
-                                <tr className="bg-white/[0.02]">
-                                    <td className="p-4 border-r border-white/5 font-bold text-[10px] text-slate-400 uppercase tracking-wider pl-4">
-                                        Valor Porción Terrestre
-                                    </td>
-                                    {ACCOMMODATIONS.map(type => {
-                                        const { costoPT, utilidad } = calculateTotals(activeTab, type);
-                                        return (
-                                            <td key={`pt-${type}`} className="p-4 text-center border-r border-white/5">
-                                                <span className="text-sm font-mono font-bold text-slate-300">
-                                                    $ {Math.round(costoPT + utilidad).toLocaleString()}
-                                                </span>
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-
-                                {/* 3. VALOR DEL TIQUETE */}
-                                <tr className="hover:bg-white/[0.02] transition-colors">
-                                    <td className="p-4 border-r border-white/5 font-bold text-[10px] text-white uppercase tracking-wider pl-4">
-                                        Valor del Tiquete
-                                    </td>
-                                    {ACCOMMODATIONS.map(type => (
-                                        <td key={`tiq-${type}`} className="p-3 text-center border-r border-white/5">
+                                    {ACCOMMODATIONS.map(col => (
+                                        <td key={`${col.id}-tarifa`} className="p-1 text-center border-r border-b border-white/5 relative">
                                             <EditableInput
-                                                value={data[activeTab].rows[type].tiquete}
-                                                onChange={val => handleInputChange(activeTab, type, 'tiquete', val)}
+                                                value={data[activeTab].rows[col.id].tarifaCobrar}
+                                                onChange={val => handleInputChange(activeTab, col.id, 'tarifaCobrar', val)}
                                                 prefix="$"
+                                                className="!bg-blue-900/30 !text-blue-300 !border-blue-500/30"
                                             />
                                         </td>
                                     ))}
                                 </tr>
 
-                                {/* 4. TARIFA ADMINISTRATIVA */}
-                                <tr className="hover:bg-white/[0.02] transition-colors">
-                                    <td className="p-4 border-r border-white/5 font-bold text-[10px] text-white uppercase tracking-wider pl-4">
-                                        Tarifa Admin. (Neta + IVA)
-                                    </td>
-                                    {ACCOMMODATIONS.map(type => (
-                                        <td key={`adm-${type}`} className="p-3 text-center border-r border-white/5">
-                                            <div className="flex flex-col gap-1">
-                                                <EditableInput
-                                                    value={data[activeTab].rows[type].adminFeeNet}
-                                                    onChange={val => handleInputChange(activeTab, type, 'adminFeeNet', val)}
-                                                    prefix="N"
-                                                />
-                                                <EditableInput
-                                                    value={data[activeTab].rows[type].adminFeeIVA}
-                                                    onChange={val => handleInputChange(activeTab, type, 'adminFeeIVA', val)}
-                                                    prefix="I"
-                                                />
-                                            </div>
-                                        </td>
-                                    ))}
-                                </tr>
+                                {/* 2 & 3. Tiquete y TA (Top section, editable) */}
+                                {renderInputRow("Valor del Tiquete", "tiqueteTop", "hover:bg-white/[0.02]", "")}
+                                {renderInputRow("TA + FEE con Iva incluido", "taFeeTop", "hover:bg-white/[0.02]", "")}
 
-                                {/* 5. ASISTENCIA MEDICA (Yellow) */}
-                                <tr className="bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors">
-                                    <td className="p-4 border-r border-yellow-500/10 font-bold text-[10px] text-yellow-500 uppercase tracking-wider pl-4">
-                                        Asistencia Médica
+                                {/* 4 & 5. Costos Calculados */}
+                                {renderCalcRow("Valor Porcion terrestre", "valorPT", "bg-white/[0.03]", "text-slate-300", "text-slate-400")}
+                                {renderCalcRow("valor incremento TC 5%", "incrementoTC", "bg-white/[0.03]", "text-slate-400", "text-slate-500")}
+
+                                {/* 6. Precio Total (Naranja) */}
+                                {renderCalcRow("precio total del Paquete", "precioTotal", "bg-orange-500/10", "text-orange-400 !text-sm", "text-orange-500")}
+
+                                {/* 7, 8 & 9. Desglose Tiquetes y Admin */}
+                                {renderInputRow("tiquete (NETA)", "tiqueteNeto", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
+                                {renderInputRow("Tarifa Administrativa con iva", "tarifaAdminIva", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
+                                {renderInputRow("Fee de Emision", "feeEmision", "hover:bg-white/[0.02] bg-yellow-900/5", "")}
+
+                                {/* 10 - 15. Costeos Directos (Amarillo/Verde) */}
+                                {renderInputRow("Asistencia medica", "asistencia", "bg-blue-900/10 hover:bg-blue-900/20", "!bg-blue-900/20 !text-blue-300 !border-blue-500/20", "text-blue-400")}
+                                {renderInputRow("Tarifa de alojamiento", "alojamiento", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
+                                {renderInputRow("Iva de Alojamiento", "ivaAlojamiento", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
+                                {renderInputRow("Seguro Hotelero", "seguroHotelero", "bg-yellow-500/10 hover:bg-yellow-500/20", "!bg-yellow-500/20 !text-yellow-400 !border-yellow-500/30", "text-yellow-500")}
+                                {renderInputRow("Traslados", "traslados", "bg-green-500/10 hover:bg-green-500/20", "!bg-green-500/20 !text-green-400 !border-green-500/30", "text-green-500")}
+                                {renderInputRow("Receptivos", "receptivos", "bg-green-500/10 hover:bg-green-500/20", "!bg-green-500/20 !text-green-400 !border-green-500/30", "text-green-500")}
+
+                                {/* 16. Factor de Utilidad */}
+                                <tr className="bg-red-500/10 hover:bg-red-500/20 transition-colors">
+                                    <td className="p-3 border-r border-b border-white/5 font-black text-[10px] uppercase tracking-wider pl-4 whitespace-nowrap text-red-500 flex justify-between items-center">
+                                        Utilidad Porcion
+                                        <span className="text-[8px] text-red-500/50 block ml-2">(Ej. 0.8)</span>
                                     </td>
-                                    {ACCOMMODATIONS.map(type => (
-                                        <td key={`asis-${type}`} className="p-3 text-center border-r border-yellow-500/10">
+                                    {ACCOMMODATIONS.map(col => (
+                                        <td key={`${col.id}-utilidad`} className="p-1 text-center border-r border-b border-white/5 relative">
                                             <EditableInput
-                                                value={data[activeTab].rows[type].asistencia}
-                                                onChange={val => handleInputChange(activeTab, type, 'asistencia', val)}
-                                                prefix="$"
+                                                value={data[activeTab].rows[col.id].utilidad}
+                                                onChange={val => handleInputChange(activeTab, col.id, 'utilidad', val)}
+                                                prefix=""
+                                                className="!bg-red-900/30 !text-red-400 !border-red-500/30"
                                             />
                                         </td>
                                     ))}
                                 </tr>
 
-                                {/* 6. TARIFA DE ALOJAMIENTO (Yellow) */}
-                                <tr className="bg-yellow-500/5 hover:bg-yellow-500/10 transition-colors">
-                                    <td className="p-4 border-r border-yellow-500/10 pl-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-[10px] text-yellow-500 uppercase tracking-wider">Tarifa de Alojamiento</span>
-                                            <span className="text-[9px] text-yellow-500/60 font-medium tracking-widest mt-0.5">({data[activeTab].nights} Noches)</span>
-                                        </div>
-                                    </td>
-                                    {ACCOMMODATIONS.map(type => (
-                                        <td key={`hot-${type}`} className="p-3 text-center border-r border-yellow-500/10">
-                                            <EditableInput
-                                                value={data[activeTab].rows[type].hotel}
-                                                onChange={val => handleInputChange(activeTab, type, 'hotel', val)}
-                                                prefix="$"
-                                            />
-                                        </td>
-                                    ))}
-                                </tr>
+                                {/* 17. Utilidad PT (Naranja) */}
+                                {renderCalcRow("Utilidad Porcion Terrestre", "utilidadPT", "bg-orange-500/10", "text-orange-400", "text-orange-500")}
 
-                                {/* 7. RECEPTIVOS / TRASLADOS (Green) */}
-                                <tr className="bg-green-500/5 hover:bg-green-500/10 transition-colors">
-                                    <td className="p-4 border-r border-green-500/10 font-bold text-[10px] text-green-500 uppercase tracking-wider pl-4">
-                                        Traslados / Receptivos
-                                    </td>
-                                    {ACCOMMODATIONS.map(type => (
-                                        <td key={`rec-${type}`} className="p-3 text-center border-r border-green-500/10">
-                                            <EditableInput
-                                                value={data[activeTab].rows[type].receptivos}
-                                                onChange={val => handleInputChange(activeTab, type, 'receptivos', val)}
-                                                prefix="$"
-                                            />
-                                        </td>
-                                    ))}
-                                </tr>
-
-                                {/* 8. MARKUP / UTILIDAD PORCION TERRESTRE (Orange) */}
-                                <tr className="bg-orange-500/5 hover:bg-orange-500/10 transition-colors">
-                                    <td className="p-4 border-r border-orange-500/10 font-bold text-[10px] text-orange-500 uppercase tracking-wider pl-4">
-                                        Utilidad Porción (%)
-                                    </td>
-                                    {ACCOMMODATIONS.map(type => (
-                                        <td key={`mkp-${type}`} className="p-3 text-center border-r border-orange-500/10">
-                                            <EditableInput
-                                                value={data[activeTab].rows[type].markup}
-                                                onChange={val => handleInputChange(activeTab, type, 'markup', val)}
-                                                suffix="%"
-                                            />
-                                        </td>
-                                    ))}
-                                </tr>
-
-                                {/* 9. UTILIDAD GANANCIA */}
-                                <tr className="bg-orange-500/10">
-                                    <td className="p-4 border-r border-orange-500/20 font-black text-[10px] text-orange-400 uppercase tracking-wider text-right pr-4">
-                                        Ganancia Neta
-                                    </td>
-                                    {ACCOMMODATIONS.map(type => {
-                                        const { utilidad } = calculateTotals(activeTab, type);
-                                        return (
-                                            <td key={`util-${type}`} className="p-4 text-center border-r border-orange-500/20">
-                                                <span className="text-sm font-black text-orange-400 font-mono tracking-tighter">
-                                                    $ {Math.round(utilidad).toLocaleString()}
-                                                </span>
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
+                                {/* 18. UTILIDAD ADICIONAL (Verde exito / Rojo perdida) */}
+                                {renderCalcRow("UTILIDAD ADICIONAL", "utilidadAdicional", "bg-black", "text-emerald-400 !text-[13px]", "text-white")}
                             </tbody>
                         </table>
-                    </div>
-
-                    <div className="mt-6 flex items-center justify-between p-6 bg-blue-500/5 border border-blue-500/10 rounded-2xl">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-                                <FileText className="w-5 h-5 text-blue-400" />
-                            </div>
-                            <div>
-                                <span className="block text-[10px] font-black text-blue-400 uppercase tracking-widest">Resumen de Cálculo</span>
-                                <span className="text-xs text-slate-400">Total Venta = (Costo PT + Utilidad) + Tiquete + Fee</span>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-[10px] text-slate-500 uppercase font-black block mb-1">TRM Aplicada</span>
-                            <span className="text-xl font-mono font-black text-white">$ {parseFloat(data[activeTab].trm).toLocaleString()}</span>
-                        </div>
                     </div>
                 </div>
             </div>
