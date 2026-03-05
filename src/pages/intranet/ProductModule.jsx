@@ -57,6 +57,7 @@ const ProductModule = () => {
     const calculateTotals = (tabId, rowType) => {
         const row = data[tabId].rows[rowType];
         const isInternational = tabId.includes('INTERNACIONAL');
+        const trm = parseFloat(data[tabId].trm) || 1;
         const nights = parseInt(data[tabId].nights) || 1;
 
         // 1. Costo PT (Terrestre)
