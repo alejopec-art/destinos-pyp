@@ -59,52 +59,56 @@ const IntranetLayout = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-[#0f172a]/90 via-[#0f172a]/80 to-[#1e293b]/90 backdrop-blur-[2px]"></div>
       </div>
 
-      <aside className="w-64 bg-[#1e293b]/40 backdrop-blur-xl border-r border-slate-700/30 flex flex-col hidden md:flex relative z-10">
-        <div className="p-6">
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-              <Plane className="w-5 h-5 text-white" />
-            </div>
-            Destinos P&P
-          </h2>
-        </div>
-
-        <nav className="flex-1 px-4 py-4 space-y-8 overflow-hidden">
-          <div>
-            <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Principal</p>
-            <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/intranet/dashboard" active={location.pathname === '/intranet/dashboard'} />
-            <SidebarItem icon={FileText} label="Cotización" path="/intranet/quotes" active={isActive('/intranet/quotes')} />
-            <SidebarItem icon={BarChart3} label="Ventas" path="/intranet/sales" active={isActive('/intranet/sales')} />
-            <SidebarItem icon={CreditCard} label="Finanzas" path="/intranet/finance" active={isActive('/intranet/finance')} />
-            <SidebarItem icon={Map} label="Logística" path="/intranet/logistics" active={isActive('/intranet/logistics')} />
+      {!location.pathname.includes('producto') && (
+        <aside className="w-64 bg-[#1e293b]/40 backdrop-blur-xl border-r border-slate-700/30 flex flex-col hidden md:flex relative z-10">
+          <div className="p-6">
+            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                <Plane className="w-5 h-5 text-white" />
+              </div>
+              Destinos P&P
+            </h2>
           </div>
 
-          {/* Solo mostrar Gerencia si estamos en el módulo de Administración */}
-          {isAdminModule && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-              <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Gerencia</p>
-              <SidebarItem icon={ShieldCheck} label="Administración" path="/intranet/admin" active={isActive('/intranet/admin')} />
-              <SidebarItem icon={Settings} label="Configuración" path="/intranet/settings" active={isActive('/intranet/settings')} />
-            </motion.div>
-          )}
-        </nav>
+          <nav className="flex-1 px-4 py-4 space-y-8 overflow-hidden">
+            <div>
+              <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Principal</p>
+              <SidebarItem icon={LayoutDashboard} label="Dashboard" path="/intranet/dashboard" active={location.pathname === '/intranet/dashboard'} />
+              <SidebarItem icon={FileText} label="Cotización" path="/intranet/quotes" active={isActive('/intranet/quotes')} />
+              <SidebarItem icon={BarChart3} label="Ventas" path="/intranet/sales" active={isActive('/intranet/sales')} />
+              <SidebarItem icon={CreditCard} label="Finanzas" path="/intranet/finance" active={isActive('/intranet/finance')} />
+              <SidebarItem icon={Map} label="Logística" path="/intranet/logistics" active={isActive('/intranet/logistics')} />
+            </div>
 
-        <div className="p-4 border-t border-slate-700/50 space-y-4">
-          <TeamMonitor embedded={true} fullWidth={true} />
-          <Link to="/">
-            <button className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-red-500/10 transition-all text-[10px] font-bold uppercase tracking-widest group border border-slate-800 hover:border-red-500/30">
-              <LogOut className="w-4 h-4 text-red-400" /> Cerrar Sesión
-            </button>
-          </Link>
-        </div>
-      </aside>
+            {/* Solo mostrar Gerencia si estamos en el módulo de Administración */}
+            {isAdminModule && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Gerencia</p>
+                <SidebarItem icon={ShieldCheck} label="Administración" path="/intranet/admin" active={isActive('/intranet/admin')} />
+                <SidebarItem icon={Settings} label="Configuración" path="/intranet/settings" active={isActive('/intranet/settings')} />
+              </motion.div>
+            )}
+          </nav>
+
+          <div className="p-4 border-t border-slate-700/50 space-y-4">
+            <TeamMonitor embedded={true} fullWidth={true} />
+            <Link to="/">
+              <button className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-red-500/10 transition-all text-[10px] font-bold uppercase tracking-widest group border border-slate-800 hover:border-red-500/30">
+                <LogOut className="w-4 h-4 text-red-400" /> Cerrar Sesión
+              </button>
+            </Link>
+          </div>
+        </aside>
+      )}
 
       <main className="flex-1 overflow-y-auto relative z-10 p-4 md:p-8">
         {/* Dynamic Header */}
-        <header className="mb-8 pb-4 border-b border-slate-700/30 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white tracking-wide drop-shadow-lg">{getModuleTitle()}</h2>
-          <div className="text-xs text-slate-500 font-mono bg-slate-900/50 px-2 py-1 rounded border border-slate-700/50">v2.0.0 Pro</div>
-        </header>
+        {!location.pathname.includes('producto') && (
+          <header className="mb-8 pb-4 border-b border-slate-700/30 flex justify-between items-center">
+            <h2 className="text-xl font-bold text-white tracking-wide drop-shadow-lg">{getModuleTitle()}</h2>
+            <div className="text-xs text-slate-500 font-mono bg-slate-900/50 px-2 py-1 rounded border border-slate-700/50">v2.0.0 Pro</div>
+          </header>
+        )}
 
         <Outlet />
       </main>

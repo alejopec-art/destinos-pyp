@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
     Calculator, Globe, Map, Plane, RefreshCcw, Download, Save,
-    AlertCircle, TrendingUp, Info, ChevronRight, Database, FileText
+    AlertCircle, TrendingUp, Info, ChevronRight, Database, FileText, ArrowLeft
 } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient';
 import { generateProductPdf } from '../../utils/pdf';
@@ -37,6 +38,19 @@ const INITIAL_TAB_DATA = {
         [type]: { ...INITIAL_ROW }
     }), {})
 };
+
+const EditableInput = ({ value, onChange, prefix = '', suffix = '', className = '' }) => (
+    <div className={`relative group ${className}`}>
+        {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lime-500/50 text-[10px] font-bold">{prefix}</span>}
+        <input
+            type="number"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className={`w-full bg-[#0d0d0f] border border-white/5 rounded-lg px-3 py-2 text-sm text-lime-400 font-mono focus:border-lime-500/50 outline-none transition-all ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-8' : ''}`}
+        />
+        {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-lime-500/50 text-[10px] font-bold">{suffix}</span>}
+    </div>
+);
 
 const ProductModule = () => {
     const { user } = useAuth();
@@ -194,25 +208,17 @@ const ProductModule = () => {
         });
     };
 
-    // --- COMPONENTES DE UI ---
-    const EditableInput = ({ value, onChange, prefix = '', suffix = '', className = '' }) => (
-        <div className={`relative group ${className}`}>
-            {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lime-500/50 text-[10px] font-bold">{prefix}</span>}
-            <input
-                type="number"
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                className={`w-full bg-[#0d0d0f] border border-white/5 rounded-lg px-3 py-2 text-sm text-lime-400 font-mono focus:border-lime-500/50 outline-none transition-all ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-8' : ''}`}
-            />
-            {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-lime-500/50 text-[10px] font-bold">{suffix}</span>}
-        </div>
-    );
-
     return (
         <div className="flex flex-col gap-6 animate-fade-in text-slate-300">
             {/* Header & Tabs */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-[#0d0d0f]/80 backdrop-blur-xl p-6 rounded-3xl border border-white/5 border-t-white/10 shadow-2xl">
                 <div className="flex gap-2 bg-black/40 p-1 rounded-2xl border border-white/5">
+                    <Link
+                        to="/intranet/dashboard"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-slate-500 hover:text-white hover:bg-white/5 transition-all"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </Link>
                     {TABS.map(tab => (
                         <button
                             key={tab.id}
@@ -348,7 +354,7 @@ const ProductModule = () => {
                             </thead>
                             <tbody className="divide-y divide-white/5">
                                 {ACCOMMODATIONS.map(type => {
-                                    const { costoPT, totalVenta } = calculateTotals(activeTab, type);
+                                    const { costoPT, totalVenta, totalVentaCOP } = calculateTotals(activeTab, type);
                                     const row = data[activeTab].rows[type];
                                     return (
                                         <tr key={type} className="group hover:bg-white/[0.02] transition-colors">
